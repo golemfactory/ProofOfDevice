@@ -1,0 +1,14 @@
+*.meta
+*.mrsigner
+*.o
+*.so
+*.so.sig
+*.so.sigdata
+
+# generated files
+pod_enclave_mrsigner.h
+pod_enclave_t.c
+pod_enclave_t.h
+pod_enclave_u.c
+pod_enclave_u.h
+*.pem

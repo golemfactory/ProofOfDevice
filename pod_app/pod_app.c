@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
+#include <openssl/sha.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -53,10 +54,23 @@ ssize_t get_file_size(int fd) {
     return st.st_size;
 }
 
-/* Read whole file, caller should free the buffer */
-uint8_t* read_file(const char* path, size_t* size) {
+/*!
+ *  \brief Read file contents
+ *
+ *  \param[in]     buffer Buffer to read data to. If NULL, this function allocates one.
+ *  \param[in]     path   Path to the file.
+ *  \param[in,out] size   On entry, number of bytes to read. 0 means to read the entire file.
+ *                        On exit, number of bytes read.
+ *  \return On success, pointer to the data buffer. If \p buffer was NULL, caller should free this.
+ *          On failure, NULL.
+ */
+void* read_file(void* buffer, const char* path, size_t* size) {
     FILE* f = NULL;
-    uint8_t* buf = NULL;
+    ssize_t fs = 0;
+    void* buf = buffer;
+
+    if (!size || !path)
+        return NULL;
 
     f = fopen(path, "rb");
     if (!f) {
@@ -64,31 +78,40 @@ uint8_t* read_file(const char* path, size_t* size) {
         goto out;
     }
 
-    ssize_t fs = get_file_size(fileno(f));
-    if (fs < 0) {
-        printf("Failed to get size of file '%s': %s\n", path, strerror(errno));
-        goto out;
+    if (*size == 0) { // read whole file
+        fs = get_file_size(fileno(f));
+        if (fs < 0) {
+            printf("Failed to get size of file '%s': %s\n", path, strerror(errno));
+            goto out;
+        }
+    } else {
+        fs = *size;
     }
 
-    buf = malloc(fs);
-    if (!buf) {
-        printf("No memory\n");
-        goto out;
+    if (!buffer) {
+        buffer = malloc(fs);
+        if (!buffer) {
+            printf("No memory\n");
+            goto out;
+        }
     }
 
-    if (fread(buf, fs, 1, f) != 1) {
+    if (fread(buffer, fs, 1, f) != 1) {
         printf("Failed to read file '%s'\n", path);
-        free(buf);
-        buf = NULL;
+        if (!buf) {
+            free(buffer);
+            buffer = NULL;
+        }
     }
 
 out:
     if (f)
         fclose(f);
 
-    if (buf)
+    if (*size == 0)
         *size = fs;
-    return buf;
+
+    return buffer;
 }
 
 /* Write buffer to file */
@@ -173,7 +196,7 @@ int load_pod_enclave(const char* enclave_path, bool debug_enabled, const char* s
 
     if (load_sealed_state) {
         printf("Loading sealed enclave state from '%s'\n", sealed_state_path);
-        sealed_keys = read_file(sealed_state_path, &sealed_size); // may return NULL
+        sealed_keys = read_file(NULL, sealed_state_path, &sealed_size); // may return NULL
         if (sealed_keys == NULL)
             goto out;
     }
@@ -397,7 +420,7 @@ int main(int argc, char* argv[]) {
 
             size_t sig_size = 0;
             size_t data_size = 0;
-            uint8_t* data = read_file(data_path, &data_size);
+            uint8_t* data = read_file(NULL, data_path, &data_size);
             if (!data)
                 goto out;
 

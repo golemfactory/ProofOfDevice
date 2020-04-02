@@ -266,7 +266,6 @@ int e_initialize(uint8_t* sealed_data, size_t sealed_size, bool export_pubkey) {
 
     eprintf("Public enclave key hash: ");
     hexdump(g_pub_key_hash);
-    eprintf("\n");
 
     eprintf("Enclave initialization OK\n");
 

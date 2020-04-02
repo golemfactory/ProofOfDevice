@@ -64,14 +64,14 @@ To generate a new enclave key pair and export enclave quote, run::
    Saving sealed enclave state to 'pod_data.sealed'
    Saving public enclave key to 'pod_pubkey.pem'
    Public enclave key hash: 36e24b93edb3acd51112db95225b2c32c0331c6d69e9da290b2235e5495ba16c
-
    Enclave initialization OK
    Enclave quote saved to 'pod.quote'
 
 Signing
 -------
 
-After the enclave keys are generated, you can start signing data::
+After the enclave keys are generated, you can start signing data (``pod_enclave/pod_enclave.c``
+in this example)::
 
    $ pod_app/pod_app sign -e pod_enclave/pod_enclave.signed.so -D pod_enclave/pod_enclave.c -S signature
    Loading enclave from file 'pod_enclave/pod_enclave.signed.so'
@@ -80,7 +80,6 @@ After the enclave keys are generated, you can start signing data::
    Enclave initializing...
    Unsealing enclave keys...
    Public enclave key hash: 36e24b93edb3acd51112db95225b2c32c0331c6d69e9da290b2235e5495ba16c
-
    Enclave initialization OK
    Signature size: 512 bytes
    Signed 12752 bytes of data

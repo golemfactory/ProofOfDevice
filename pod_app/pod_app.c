@@ -227,6 +227,8 @@ int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_type,
     sgx_epid_group_id_t epid_group_id = { 0 };
     sgx_target_info_t qe_info = { 0 };
     sgx_report_t report = { 0 };
+    sgx_quote_nonce_t qe_nonce = { 0 };
+    sgx_report_t qe_report = { 0 };
     uint32_t quote_size = 0;
     sgx_quote_t* quote = NULL;
 
@@ -256,7 +258,7 @@ int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_type,
         goto out;
     }
 
-    // ECALL: generate enclave's report, targeted to Quoting Enclave
+    // ECALL: generate enclave's report, targeted to Quoting Enclave (QE)
     sgx_ret = e_get_report(g_enclave_id, &ret, &qe_info, &report);
     if (sgx_ret != SGX_SUCCESS || ret < 0) {
         ret = -1;
@@ -264,19 +266,60 @@ int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_type,
         goto out;
     }
 
-    // Get enclave's quote. TODO: use revocation list and nonce
+    // Prepare random nonce
+    // TODO: ideally this nonce would be received from a 3rd party on a different system
+    // that will verify the QE report
+    size_t nonce_size = sizeof(qe_nonce);
+    if (!read_file(&qe_nonce, "/dev/urandom", &nonce_size)) {
+        ret = -1;
+        printf("Failed to read random data\n");
+        goto out;
+    }
+
+    // Get enclave's quote. TODO: use revocation list
     sgx_ret = sgx_get_quote(&report,
                             quote_type,
                             &sp_id, // service provider id
-                            NULL, // nonce, optional if QE report is null
+                            &qe_nonce, // nonce for QE report
                             NULL, // no revocation list
                             0, // revocation list size
-                            NULL, // optional QE report
+                            &qe_report, // optional QE report
                             quote,
                             quote_size);
 
     if (sgx_ret != SGX_SUCCESS) {
         printf("Failed to get enclave quote: %d\n", sgx_ret);
+        goto out;
+    }
+
+    // Calculate expected qe_report.body.report_data
+    // It should be sha256(nonce||quote)
+    ret = -1;
+    uint8_t hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha;
+
+    if (SHA256_Init(&sha) != 1) {
+        printf("Failed to init digest context\n");
+        goto out;
+    }
+
+    if (SHA256_Update(&sha, &qe_nonce, sizeof(qe_nonce)) != 1) {
+        printf("Failed to calculate hash\n");
+        goto out;
+    }
+
+    if (SHA256_Update(&sha, quote, quote_size) != 1) {
+        printf("Failed to calculate hash\n");
+        goto out;
+    }
+
+    if (SHA256_Final(hash, &sha) != 1) {
+        printf("Failed to finalize hash\n");
+        goto out;
+    }
+
+    if (memcmp(&qe_report.body.report_data, hash, sizeof(hash)) != 0) {
+        printf("Quoting Enclave report contains invalid data\n");
         goto out;
     }
 
@@ -402,6 +445,9 @@ int main(int argc, char* argv[]) {
                 goto out;
 
             ret = generate_enclave_quote(sp_id, sp_quote_type, quote_path);
+            if (ret < 0)
+                goto out;
+
             break;
         }
 

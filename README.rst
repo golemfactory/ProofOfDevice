@@ -2,8 +2,9 @@
 Proof of Device sample code
 ===========================
 
-This sample consists of the PoD SGX enclave (``pod_enclave``) and an application that uses
-the enclave to perform data signing (``pod_app``).
+This sample consists of the PoD SGX enclave (``pod_enclave``), a shared library that exposes
+the enclave functionality (``pod_library``) and an application that uses the library and enclave
+to perform data signing (``pod_app``).
 
 Requirements
 ============
@@ -34,7 +35,8 @@ it with ``openssl``::
 ``ENCLAVE_SIGNING_KEY`` environment variable/Makefile option should contain path to the enclave
 signing key.
 
-To build both the enclave and application, just run ``make``.
+To build the enclave, library and application, just run ``make``. To install the library and
+the application, run ``sudo make install``.
 
 Running
 =======
@@ -66,6 +68,7 @@ To generate a new enclave key pair and export enclave quote, run::
    Public enclave key hash: 36e24b93edb3acd51112db95225b2c32c0331c6d69e9da290b2235e5495ba16c
    Enclave initialization OK
    Enclave quote saved to 'pod.quote'
+   Enclave unloaded
 
 Signing
 -------
@@ -82,8 +85,9 @@ in this example)::
    Public enclave key hash: 36e24b93edb3acd51112db95225b2c32c0331c6d69e9da290b2235e5495ba16c
    Enclave initialization OK
    Signature size: 512 bytes
-   Signed 12752 bytes of data
+   Signed 12739 bytes of data
    Saved signature to 'signature'
+   Enclave unloaded
 
    $ openssl dgst -sha256 -verify pod_pubkey.pem -signature signature pod_enclave/pod_enclave.c
    Verified OK

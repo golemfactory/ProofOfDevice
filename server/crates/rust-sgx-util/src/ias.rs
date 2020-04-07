@@ -7,8 +7,13 @@ use std::{fmt, slice, u32};
 const IAS_VERIFY_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v3/report";
 const IAS_SIGRL_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v3/sigrl";
 
+/// Represents a handle to Intel's Attestation Service. It allows the user
+/// to perform operations such as getting a SigRL for a specified `GroupId`,
+/// or verifying a specified quote with the IAS.
 pub struct IasHandle {
-    api_key: CString,
+    // We need to store `verify_url` and `sigrl_url` due to a bug in the current
+    // implementation of `sgx_util` lib which does not copy out the buffers
+    // passed in as args to `ias_init` function.
     verify_url: CString,
     sigrl_url: CString,
     context: NonNull<c::IasContext>,
@@ -17,6 +22,30 @@ pub struct IasHandle {
 impl IasHandle {
     // TODO API key should probably have its own type that does
     // at the very least some length validation
+    /// Create new `IasHandle` with the specified `api_key` API key,
+    /// IAS verification URL `verify_url`, and IAS SigRL URL `sigrl_url`.
+    /// 
+    /// By default, the following URLs are used:
+    /// * IAS verification - [dev/attestation/v3/report]
+    /// * IAS SigRL - [dev/attestation/v3/sigrl]
+    /// 
+    /// [dev/attestation/v3/report]: https://api.trustedservices.intel.com/sgx/dev/attestation/v3/report
+    /// [dev/attestation/v3/sigrl]: https://api.trustedservices.intel.com/sgx/dev/attestation/v3/sigrl
+    /// 
+    /// # Errors
+    /// 
+    /// This function will fail with `Error::IasInitNullPtr` if initialisation
+    /// of the handle is unsuccessful.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use rust_sgx_util::ias::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let _handle = IasHandle::new("012345abcdef", None, None)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn new(api_key: &str, verify_url: Option<&str>, sigrl_url: Option<&str>) -> Result<Self> {
         let api_key = CString::new(api_key)?;
         let verify_url = verify_url.unwrap_or(IAS_VERIFY_URL);
@@ -27,13 +56,33 @@ impl IasHandle {
             unsafe { c::ias_init(api_key.as_ptr(), verify_url.as_ptr(), sigrl_url.as_ptr()) };
         let context = NonNull::new(raw_context).ok_or(Error::IasInitNullPtr)?;
         Ok(Self {
-            api_key,
             verify_url,
             sigrl_url,
             context,
         })
     }
 
+    /// Obtain SigRL for the given `GroupId` `group_id`.
+    /// 
+    /// # Errors
+    /// 
+    /// This function will fail with `Error::GetSigrlNonZero(_)` if the
+    /// `group_id` is invalid, or the `IasHandle` was created with an
+    /// invalid IAS verification URL.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use rust_sgx_util::ias::*;
+    /// use std::str::FromStr;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let handle = IasHandle::new("012345abcdef", None, None)?;
+    /// let group_id = GroupId::from_str("01234567")?;
+    /// let res = handle.get_sigrl(&group_id);
+    /// assert!(res.is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn get_sigrl(&self, group_id: &GroupId) -> Result<Option<Sigrl>> {
         let mut size: usize = 0;
         let mut raw = ptr::null_mut();
@@ -69,6 +118,8 @@ impl Drop for IasHandle {
     }
 }
 
+/// Stores the result of `IasHandle::get_sigrl` function call, i.e., the SigRL
+/// for the specified `GroupId`.
 #[derive(Debug)]
 pub struct Sigrl {
     buffer: Vec<u8>,
@@ -79,6 +130,11 @@ impl Sigrl {
         let slice = slice::from_raw_parts(raw, size);
         let buffer = slice.to_vec();
         Self { buffer }
+    }
+
+    /// Return SigRL as pure bytes slice.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buffer
     }
 }
 
@@ -93,12 +149,29 @@ impl fmt::Display for Sigrl {
 }
 
 /// Represents EPID group ID.
+/// 
+/// This structure is necessary to invoke `IasHandle::get_sigrl` function.
+/// 
+/// # Creating `GroupId`
+/// 
+/// Currently, the only way to create an instance of `GroupId`, is from `&str`
+/// slice via the `std::str::FromStr::from_str` method. Note also that currently
+/// prepending "0x" to the string is invalid, and will result in `Error::ParseInt(_)`
+/// error.
+/// 
+/// ```
+/// # use rust_sgx_util::ias::GroupId;
+/// use std::str::FromStr;
+/// assert!(GroupId::from_str("01234567").is_ok());
+/// assert!(GroupId::from_str("0x01234567").is_err()); // prepending "0x" is currently invalid
+/// ```
 #[derive(Debug)]
 pub struct GroupId {
     inner: [u8; 4],
 }
 
 impl GroupId {
+    /// Return `GroupId` as pure bytes slice.
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner
     }

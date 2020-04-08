@@ -10,8 +10,10 @@ const IAS_VERIFY_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/atte
 const IAS_SIGRL_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v3/sigrl";
 
 /// Represents a handle to Intel's Attestation Service. It allows the user
-/// to perform operations such as getting a SigRL for a specified `GroupId`,
+/// to perform operations such as getting a SigRL for a specified [`GroupId`],
 /// or verifying a specified quote with the IAS.
+/// 
+/// [`GroupId`]: struct.GroupId.html
 pub struct IasHandle {
     // We need to store `verify_url` and `sigrl_url` due to a bug in the current
     // implementation of `sgx_util` lib which does not copy out the buffers
@@ -26,7 +28,7 @@ pub struct IasHandle {
 impl IasHandle {
     // TODO API key should probably have its own type that does
     // at the very least some length validation
-    /// Create new `IasHandle` with the specified `api_key` API key,
+    /// Create new instance with the specified `api_key` API key,
     /// IAS verification URL `verify_url`, and IAS SigRL URL `sigrl_url`.
     ///
     /// By default, the following URLs are used:
@@ -38,8 +40,10 @@ impl IasHandle {
     ///
     /// # Errors
     ///
-    /// This function will fail with `Error::IasInitNullPtr` if initialisation
+    /// This function will fail with [`Error::IasInitNullPtr`] if initialisation
     /// of the handle is unsuccessful.
+    /// 
+    /// [`Error::IasInitNullPtr`]: enum.Error.html#variant.IasInitNullPtr
     ///
     /// # Examples
     ///
@@ -66,13 +70,15 @@ impl IasHandle {
         })
     }
 
-    /// Obtain SigRL for the given `GroupId` `group_id`.
+    /// Obtain SigRL for the given `group_id`.
     ///
     /// # Errors
     ///
-    /// This function will fail with `Error::IasGetSigrlNonZero(_)` if the
+    /// This function will fail with [`Error::IasGetSigrlNonZero(_)`] if the
     /// `group_id` is invalid, or the `IasHandle` was created with an
     /// invalid IAS verification URL.
+    /// 
+    /// [`Error::IasGetSigrlNonZero(_)`]: enum.Error.html#variant.IasGetSigrlNonZero
     ///
     /// # Examples
     ///
@@ -115,9 +121,11 @@ impl IasHandle {
     /// 
     /// # Errors
     /// 
-    /// This function will fail with `Error::IasVerifyQuoteNonZero(_)` if the
+    /// This function will fail with [`Error::IasVerifyQuoteNonZero(_)`] if the
     /// provided `quote` is invalid, or the `nonce`, or if the IAS server
     /// returns a non 200 status code.
+    /// 
+    /// [`Error::IasVerifyQuoteNonZero(_)`]: enum.Error.html#variant.IasVerifyQuoteNonZero
     /// 
     /// # Examples
     /// 
@@ -204,8 +212,16 @@ fn path_to_c_string(path: &Path) -> Result<CString> {
 }
 
 /// A thin wrapper around vector of bytes. Stores the result of
-/// `IasHandle::get_sigrl` function call, i.e., the SigRL
-/// for the specified `GroupId`.
+/// [`IasHandle::get_sigrl`] function call, i.e., the SigRL
+/// for the specified [`GroupId`].
+/// 
+/// [`IasHandle::get_sigrl`]: struct.IasHandle.html#method.get_sigrl
+/// [`GroupId`]: struct.GroupId.html
+/// 
+/// # Accessing the underlying bytes buffer
+/// 
+/// `Sigrl` implements `Deref<Target=[u8]>`, therefore dereferencing it will
+/// yield its inner buffer of bytes.
 #[derive(Debug)]
 pub struct Sigrl(Vec<u8>);
 
@@ -236,8 +252,10 @@ impl fmt::Display for Sigrl {
 
 /// Represents EPID group ID.
 ///
-/// This structure is necessary to invoke `IasHandle::get_sigrl` function.
+/// This structure is necessary to invoke [`IasHandle::get_sigrl`] function.
 ///
+/// [`IasHandle::get_sigrl`]: struct.IasHandle.html#method.get_sigrl
+/// 
 /// # Creating `GroupId`
 ///
 /// Currently, the only way to create an instance of `GroupId`, is from `&str`
@@ -251,6 +269,11 @@ impl fmt::Display for Sigrl {
 /// assert!(GroupId::from_str("01234567").is_ok());
 /// assert!(GroupId::from_str("0x01234567").is_err()); // prepending "0x" is currently invalid
 /// ```
+/// 
+/// # Accessing the underlying bytes buffer 
+/// 
+/// `GroupId` implements `Deref<Target=[u8]>`, therefore dereferencing it will
+/// yield its inner buffer of bytes.
 #[derive(Debug)]
 pub struct GroupId([u8; 4]);
 

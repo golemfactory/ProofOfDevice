@@ -16,7 +16,9 @@ pub struct IasHandle {
     // We need to store `verify_url` and `sigrl_url` due to a bug in the current
     // implementation of `sgx_util` lib which does not copy out the buffers
     // passed in as args to `ias_init` function.
+    #[allow(dead_code)]
     verify_url: CString,
+    #[allow(dead_code)]
     sigrl_url: CString,
     context: NonNull<c::IasContext>,
 }
@@ -68,7 +70,7 @@ impl IasHandle {
     ///
     /// # Errors
     ///
-    /// This function will fail with `Error::GetSigrlNonZero(_)` if the
+    /// This function will fail with `Error::IasGetSigrlNonZero(_)` if the
     /// `group_id` is invalid, or the `IasHandle` was created with an
     /// invalid IAS verification URL.
     ///
@@ -109,7 +111,26 @@ impl IasHandle {
         }
     }
 
-    /// Verify quote
+    /// Verify provided quote.
+    /// 
+    /// # Errors
+    /// 
+    /// This function will fail with `Error::IasVerifyQuoteNonZero(_)` if the
+    /// provided `quote` is invalid, or the `nonce`, or if the IAS server
+    /// returns a non 200 status code.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use rust_sgx_util::*;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let handle = IasHandle::new("012345abcdef", None, None)?;
+    /// let quote = Quote::from(vec![0u8; 100]);
+    /// let res = handle.verify_quote(&quote, None, None, None, None, None);
+    /// assert!(res.is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn verify_quote(
         &self,
         quote: &Quote,

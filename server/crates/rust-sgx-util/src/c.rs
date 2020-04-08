@@ -31,6 +31,7 @@ extern "C" {
     // util.h
     pub(crate) fn set_verbose(verbose: bool);
     // attestation.h
+    #[allow(unused)]
     pub(crate) fn verify_ias_report(
         ias_report: *const u8,
         ias_report_size: usize,
@@ -45,6 +46,7 @@ extern "C" {
         report_data: *const libc::c_char,
         ias_pub_key_pem: *const libc::c_char,
     ) -> libc::c_int;
+    #[allow(unused)]
     pub(crate) fn verify_quote(
         quote_data: *const libc::c_void,
         quote_size: usize,

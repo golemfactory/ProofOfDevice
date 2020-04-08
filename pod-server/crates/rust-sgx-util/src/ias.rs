@@ -1,4 +1,6 @@
 use crate::{c, Error, Nonce, Quote, Result};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use std::ffi::CString;
 use std::ops::Deref;
 use std::path::Path;
@@ -12,7 +14,7 @@ const IAS_SIGRL_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/attes
 /// Represents a handle to Intel's Attestation Service. It allows the user
 /// to perform operations such as getting a SigRL for a specified [`GroupId`],
 /// or verifying a specified quote with the IAS.
-/// 
+///
 /// [`GroupId`]: struct.GroupId.html
 pub struct IasHandle {
     // We need to store `verify_url` and `sigrl_url` due to a bug in the current
@@ -42,7 +44,7 @@ impl IasHandle {
     ///
     /// This function will fail with [`Error::IasInitNullPtr`] if initialisation
     /// of the handle is unsuccessful.
-    /// 
+    ///
     /// [`Error::IasInitNullPtr`]: enum.Error.html#variant.IasInitNullPtr
     ///
     /// # Examples
@@ -77,7 +79,7 @@ impl IasHandle {
     /// This function will fail with [`Error::IasGetSigrlNonZero(_)`] if the
     /// `group_id` is invalid, or the `IasHandle` was created with an
     /// invalid IAS verification URL.
-    /// 
+    ///
     /// [`Error::IasGetSigrlNonZero(_)`]: enum.Error.html#variant.IasGetSigrlNonZero
     ///
     /// # Examples
@@ -118,17 +120,17 @@ impl IasHandle {
     }
 
     /// Verify provided quote.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function will fail with [`Error::IasVerifyQuoteNonZero(_)`] if the
     /// provided `quote` is invalid, or the `nonce`, or if the IAS server
     /// returns a non 200 status code.
-    /// 
+    ///
     /// [`Error::IasVerifyQuoteNonZero(_)`]: enum.Error.html#variant.IasVerifyQuoteNonZero
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// # use rust_sgx_util::*;
     /// # fn main() -> anyhow::Result<()> {
@@ -214,15 +216,16 @@ fn path_to_c_string(path: &Path) -> Result<CString> {
 /// A thin wrapper around vector of bytes. Stores the result of
 /// [`IasHandle::get_sigrl`] function call, i.e., the SigRL
 /// for the specified [`GroupId`].
-/// 
+///
 /// [`IasHandle::get_sigrl`]: struct.IasHandle.html#method.get_sigrl
 /// [`GroupId`]: struct.GroupId.html
-/// 
+///
 /// # Accessing the underlying bytes buffer
-/// 
+///
 /// `Sigrl` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Sigrl(Vec<u8>);
 
 impl Sigrl {
@@ -255,7 +258,7 @@ impl fmt::Display for Sigrl {
 /// This structure is necessary to invoke [`IasHandle::get_sigrl`] function.
 ///
 /// [`IasHandle::get_sigrl`]: struct.IasHandle.html#method.get_sigrl
-/// 
+///
 /// # Creating `GroupId`
 ///
 /// Currently, the only way to create an instance of `GroupId`, is from `&str`
@@ -269,12 +272,13 @@ impl fmt::Display for Sigrl {
 /// assert!(GroupId::from_str("01234567").is_ok());
 /// assert!(GroupId::from_str("0x01234567").is_err()); // prepending "0x" is currently invalid
 /// ```
-/// 
-/// # Accessing the underlying bytes buffer 
-/// 
+///
+/// # Accessing the underlying bytes buffer
+///
 /// `GroupId` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GroupId([u8; 4]);
 
 impl Deref for GroupId {

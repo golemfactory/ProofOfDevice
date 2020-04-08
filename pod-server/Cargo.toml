@@ -10,9 +10,15 @@ homepage = "https://github.com/golemfactory/proofofdevice"
 description = "An implementation of proof-of-device web server."
 
 [dependencies]
+actix-web = "2"
+actix-rt = "1"
+rust-sgx-util = { path = "crates/rust-sgx-util", features = ["serde"], version = "0.1.1" }
+anyhow = "1"
+serde = "1"
+log = "0.4"
+structopt = "0.3"
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [workspace]
-members = ["crates/rust-sgx-util"]

@@ -1,4 +1,5 @@
 use actix_web::{web, App, HttpServer, Responder};
+use anyhow::{anyhow, Result};
 use rust_sgx_util::{IasHandle, Nonce, Quote};
 use serde::{Deserialize, Serialize};
 use std::{env, io};
@@ -39,7 +40,7 @@ async fn register(info: web::Json<QuoteWithNonce>, handle: web::Data<IasHandle>)
 }
 
 #[actix_rt::main]
-async fn main() -> io::Result<()> {
+async fn main() -> Result<()> {
     // TODO Handle logging better.
     env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
@@ -63,4 +64,7 @@ async fn main() -> io::Result<()> {
     .bind(address_port)?
     .run()
     .await
+    .map_err(|err| anyhow!("HttpServer errored out with {:?}", err))?;
+
+    Ok(())
 }

@@ -1,0 +1,18 @@
+[package]
+name = "pod-server"
+version = "0.1.0"
+authors = ["Jakub Konka <jakub.konka@golem.network>"]
+edition = "2018"
+license = "LGPL-3.0"
+readme = "README.md"
+repository = "https://github.com/golemfactory/proofofdevice"
+homepage = "https://github.com/golemfactory/proofofdevice"
+description = "An implementation of proof-of-device web server."
+
+[dependencies]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[workspace]
+members = ["crates/rust-sgx-util"]

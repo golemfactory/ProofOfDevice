@@ -1,7 +1,7 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpServer, Responder};
 use rust_sgx_util::{IasHandle, Nonce, Quote};
-use serde::Deserialize;
-use std::io;
+use serde::{Deserialize, Serialize};
+use std::{env, io};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -22,14 +22,28 @@ struct QuoteWithNonce {
     nonce: Option<Nonce>,
 }
 
-async fn register(info: web::Json<QuoteWithNonce>) -> impl Responder {
+#[derive(Serialize)]
+enum RegisterResponse {
+    Registered,
+    Error(String),
+}
+
+async fn register(info: web::Json<QuoteWithNonce>, handle: web::Data<IasHandle>) -> impl Responder {
     log::info!("Received data = {:?}", info);
     // Verify the provided data with IAS.
-    HttpResponse::Ok()
+    match handle.verify_quote(&info.quote, info.nonce.as_ref(), None, None, None, None) {
+        Ok(()) => web::Json(RegisterResponse::Registered),
+        // TODO Add proper mapping between error and response.
+        Err(err) => web::Json(RegisterResponse::Error(err.to_string())),
+    }
 }
 
 #[actix_rt::main]
 async fn main() -> io::Result<()> {
+    // TODO Handle logging better.
+    env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+
     let opt = Opt::from_args();
     let address = opt.address.unwrap_or_else(|| "127.0.0.1".to_owned());
     let port = opt.port.unwrap_or(8088);

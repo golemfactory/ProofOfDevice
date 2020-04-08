@@ -9,16 +9,22 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Failed to initialize `IasHandle`.
     #[error("failed to initialize IasHandle")]
     IasInitNullPtr,
+    /// `IasHandle::get_sigrl` returned nonzero return code.
     #[error("get_sigrl returned nonzero return code: {}", _0)]
     IasGetSigrlNonZero(i32),
+    /// `IasHandle::verify_quote` returned nonzero return code.
     #[error("verify_quote returned nonzero return code: {}", _0)]
     IasVerifyQuoteNonZero(i32),
+    /// Error while parsing int from string.
     #[error("parsing int from string: {:?}", _0)]
     ParseInt(#[from] std::num::ParseIntError),
+    /// Found unexpected interior nul byte.
     #[error("unexpected interior nul byte: {:?}", _0)]
     Nul(#[from] std::ffi::NulError),
+    /// (Windows only) Encountered invalid UTF16.
     #[error("invalid UTF16 encountered: {:?}", _0)]
     Utf16(#[from] std::string::FromUtf16Error),
 }

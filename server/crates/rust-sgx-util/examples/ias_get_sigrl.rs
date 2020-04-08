@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rust_sgx_util::ias::{GroupId, IasHandle};
+use rust_sgx_util::{set_verbose, GroupId, IasHandle};
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -9,10 +9,14 @@ struct Opt {
     api_key: String,
     /// EPID group ID (hex string).
     group_id: String,
+    /// Toggle verbose mode.
+    #[structopt(short, long)]
+    verbose: bool,
 }
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
+    set_verbose(opt.verbose);
     let group_id = GroupId::from_str(&opt.group_id)?;
     let ias_handle = IasHandle::new(&opt.api_key, None, None)?;
     match ias_handle.get_sigrl(&group_id)? {

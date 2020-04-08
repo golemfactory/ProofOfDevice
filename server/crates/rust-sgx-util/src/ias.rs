@@ -1,5 +1,7 @@
-use crate::{c, Error, Result};
+use crate::{c, Error, Nonce, Quote, Result};
 use std::ffi::CString;
+use std::ops::Deref;
+use std::path::Path;
 use std::ptr::{self, NonNull};
 use std::str::FromStr;
 use std::{fmt, slice, u32};
@@ -24,23 +26,23 @@ impl IasHandle {
     // at the very least some length validation
     /// Create new `IasHandle` with the specified `api_key` API key,
     /// IAS verification URL `verify_url`, and IAS SigRL URL `sigrl_url`.
-    /// 
+    ///
     /// By default, the following URLs are used:
     /// * IAS verification - [dev/attestation/v3/report]
     /// * IAS SigRL - [dev/attestation/v3/sigrl]
-    /// 
+    ///
     /// [dev/attestation/v3/report]: https://api.trustedservices.intel.com/sgx/dev/attestation/v3/report
     /// [dev/attestation/v3/sigrl]: https://api.trustedservices.intel.com/sgx/dev/attestation/v3/sigrl
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function will fail with `Error::IasInitNullPtr` if initialisation
     /// of the handle is unsuccessful.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
-    /// # use rust_sgx_util::ias::*;
+    /// # use rust_sgx_util::*;
     /// # fn main() -> anyhow::Result<()> {
     /// let _handle = IasHandle::new("012345abcdef", None, None)?;
     /// # Ok(())
@@ -63,17 +65,17 @@ impl IasHandle {
     }
 
     /// Obtain SigRL for the given `GroupId` `group_id`.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function will fail with `Error::GetSigrlNonZero(_)` if the
     /// `group_id` is invalid, or the `IasHandle` was created with an
     /// invalid IAS verification URL.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
-    /// # use rust_sgx_util::ias::*;
+    /// # use rust_sgx_util::*;
     /// use std::str::FromStr;
     /// # fn main() -> anyhow::Result<()> {
     /// let handle = IasHandle::new("012345abcdef", None, None)?;
@@ -89,7 +91,7 @@ impl IasHandle {
         let ret = unsafe {
             c::ias_get_sigrl(
                 self.context.as_ptr(),
-                group_id.as_bytes().as_ptr(),
+                group_id.as_ptr(),
                 &mut size,
                 &mut raw,
             )
@@ -103,12 +105,58 @@ impl IasHandle {
                 Ok(Some(sigrl))
             }
         } else {
-            Err(Error::GetSigrlNonZero(ret))
+            Err(Error::IasGetSigrlNonZero(ret))
         }
     }
 
-    pub fn verify_quote(&self) -> Result<()> {
-        unimplemented!("verify_quote")
+    /// Verify quote
+    pub fn verify_quote(
+        &self,
+        quote: &Quote,
+        nonce: Option<&Nonce>,
+        report_path: Option<&Path>,
+        sig_path: Option<&Path>,
+        cert_path: Option<&Path>,
+        advisory_path: Option<&Path>,
+    ) -> Result<()> {
+        let empty: &[u8] = &[];
+        let nonce = match nonce {
+            Some(nonce) => CString::new(nonce.deref())?,
+            None => CString::new(empty)?,
+        };
+        let report_path = match report_path {
+            Some(path) => path_to_c_string(path)?,
+            None => CString::new(empty)?,
+        };
+        let sig_path = match sig_path {
+            Some(path) => path_to_c_string(path)?,
+            None => CString::new(empty)?,
+        };
+        let cert_path = match cert_path {
+            Some(path) => path_to_c_string(path)?,
+            None => CString::new(empty)?,
+        };
+        let advisory_path = match advisory_path {
+            Some(path) => path_to_c_string(path)?,
+            None => CString::new(empty)?,
+        };
+        let ret = unsafe {
+            c::ias_verify_quote(
+                self.context.as_ptr(),
+                quote.as_ptr() as *const _,
+                quote.len(),
+                nonce.as_ptr(),
+                report_path.as_ptr(),
+                sig_path.as_ptr(),
+                cert_path.as_ptr(),
+                advisory_path.as_ptr(),
+            )
+        };
+        if ret == 0 {
+            Ok(())
+        } else {
+            Err(Error::IasVerifyQuoteNonZero(ret))
+        }
     }
 }
 
@@ -118,30 +166,47 @@ impl Drop for IasHandle {
     }
 }
 
-/// Stores the result of `IasHandle::get_sigrl` function call, i.e., the SigRL
+#[cfg(unix)]
+fn path_to_c_string(path: &Path) -> Result<CString> {
+    use std::os::unix::ffi::OsStrExt;
+    let s = CString::new(path.as_os_str().as_bytes())?;
+    Ok(s)
+}
+
+#[cfg(windows)]
+fn path_to_c_string(path: &Path) -> Result<CString> {
+    use std::os::windows::ffi::OsStringExt;
+    let utf16: Vec<_> = path.as_os_str().encode_wide().collect();
+    let s = String::from_utf16(utf16)?;
+    let s = CString::new(s.as_bytes())?;
+    Ok(s)
+}
+
+/// A thin wrapper around vector of bytes. Stores the result of
+/// `IasHandle::get_sigrl` function call, i.e., the SigRL
 /// for the specified `GroupId`.
 #[derive(Debug)]
-pub struct Sigrl {
-    buffer: Vec<u8>,
-}
+pub struct Sigrl(Vec<u8>);
 
 impl Sigrl {
     unsafe fn new(raw: *const u8, size: usize) -> Self {
         let slice = slice::from_raw_parts(raw, size);
-        let buffer = slice.to_vec();
-        Self { buffer }
+        Self(slice.to_vec())
     }
+}
 
-    /// Return SigRL as pure bytes slice.
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.buffer
+impl Deref for Sigrl {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
 impl fmt::Display for Sigrl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Sigrl(")?;
-        for b in &self.buffer {
+        for b in &self.0 {
             f.write_fmt(format_args!("{:#b}", b))?;
         }
         f.write_str(")")
@@ -149,31 +214,30 @@ impl fmt::Display for Sigrl {
 }
 
 /// Represents EPID group ID.
-/// 
+///
 /// This structure is necessary to invoke `IasHandle::get_sigrl` function.
-/// 
+///
 /// # Creating `GroupId`
-/// 
+///
 /// Currently, the only way to create an instance of `GroupId`, is from `&str`
 /// slice via the `std::str::FromStr::from_str` method. Note also that currently
 /// prepending "0x" to the string is invalid, and will result in `Error::ParseInt(_)`
 /// error.
-/// 
+///
 /// ```
-/// # use rust_sgx_util::ias::GroupId;
+/// # use rust_sgx_util::GroupId;
 /// use std::str::FromStr;
 /// assert!(GroupId::from_str("01234567").is_ok());
 /// assert!(GroupId::from_str("0x01234567").is_err()); // prepending "0x" is currently invalid
 /// ```
 #[derive(Debug)]
-pub struct GroupId {
-    inner: [u8; 4],
-}
+pub struct GroupId([u8; 4]);
 
-impl GroupId {
-    /// Return `GroupId` as pure bytes slice.
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.inner
+impl Deref for GroupId {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -182,13 +246,12 @@ impl FromStr for GroupId {
 
     fn from_str(s: &str) -> Result<Self> {
         let parsed = u32::from_str_radix(s, 16)?;
-        let inner = parsed.to_le_bytes();
-        Ok(GroupId { inner })
+        Ok(GroupId(parsed.to_le_bytes()))
     }
 }
 
 impl fmt::Display for GroupId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "GroupId({:#010x})", u32::from_le_bytes(self.inner))
+        write!(f, "GroupId({:#010x})", u32::from_le_bytes(self.0))
     }
 }

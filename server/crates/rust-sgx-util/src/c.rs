@@ -28,8 +28,9 @@ extern "C" {
         cert_path: *const libc::c_char,
         advisory_path: *const libc::c_char,
     ) -> libc::c_int;
+    // util.h
+    pub(crate) fn set_verbose(verbose: bool);
     // attestation.h
-    pub(crate) fn display_quote(quote_data: *const libc::c_void, quote_size: usize);
     pub(crate) fn verify_ias_report(
         ias_report: *const u8,
         ias_report_size: usize,

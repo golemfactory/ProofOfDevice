@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::ffi::CString;
 use std::ops::Deref;
 use std::path::Path;
-use std::ptr::{self, NonNull};
 use std::str::FromStr;
-use std::{fmt, slice, u32};
+use std::{fmt, ptr, slice, u32};
+use std::sync::atomic::{Ordering, AtomicPtr};
 
 const IAS_VERIFY_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v3/report";
 const IAS_SIGRL_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v3/sigrl";
@@ -24,7 +24,7 @@ pub struct IasHandle {
     verify_url: CString,
     #[allow(dead_code)]
     sigrl_url: CString,
-    context: NonNull<c::IasContext>,
+    context: Option<AtomicPtr<c::IasContext>>,
 }
 
 impl IasHandle {
@@ -43,7 +43,8 @@ impl IasHandle {
     /// # Errors
     ///
     /// This function will fail with [`Error::IasInitNullPtr`] if initialisation
-    /// of the handle is unsuccessful.
+    /// of the handle is unsuccessful, or if converting input arguments to
+    /// `CString` fails.
     ///
     /// [`Error::IasInitNullPtr`]: enum.Error.html#variant.IasInitNullPtr
     ///
@@ -64,7 +65,10 @@ impl IasHandle {
         let sigrl_url = CString::new(sigrl_url)?;
         let raw_context =
             unsafe { c::ias_init(api_key.as_ptr(), verify_url.as_ptr(), sigrl_url.as_ptr()) };
-        let context = NonNull::new(raw_context).ok_or(Error::IasInitNullPtr)?;
+        if raw_context == ptr::null_mut() {
+            return Err(Error::IasInitNullPtr);
+        }
+        let context = Some(AtomicPtr::new(raw_context));
         Ok(Self {
             verify_url,
             sigrl_url,
@@ -100,7 +104,7 @@ impl IasHandle {
         let mut raw = ptr::null_mut();
         let ret = unsafe {
             c::ias_get_sigrl(
-                self.context.as_ptr(),
+                self.context.as_ref().unwrap().load(Ordering::SeqCst),
                 group_id.as_ptr(),
                 &mut size,
                 &mut raw,
@@ -173,7 +177,7 @@ impl IasHandle {
         };
         let ret = unsafe {
             c::ias_verify_quote(
-                self.context.as_ptr(),
+                self.context.as_ref().unwrap().load(Ordering::SeqCst),
                 quote.as_ptr() as *const _,
                 quote.len(),
                 nonce.as_ptr(),
@@ -193,7 +197,8 @@ impl IasHandle {
 
 impl Drop for IasHandle {
     fn drop(&mut self) {
-        unsafe { c::ias_cleanup(self.context.as_ptr()) }
+        let raw = self.context.take();
+        unsafe { c::ias_cleanup(raw.unwrap().into_inner()) }
     }
 }
 

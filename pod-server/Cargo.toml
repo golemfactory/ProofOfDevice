@@ -17,6 +17,7 @@ anyhow = "1"
 serde = "1"
 log = "0.4"
 structopt = "0.3"
+futures = "0.3"
 
 [badges]
 maintenance = { status = "actively-developed" }

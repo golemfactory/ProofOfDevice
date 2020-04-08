@@ -1,23 +1,23 @@
 //! A safe wrapper around Graphene's [`sgx_util`] C-library.
-//!
+//! 
 //! [`sgx_util`]: https://github.com/oscarlab/graphene/tree/master/Pal/src/host/Linux-SGX/tools
-//!
+//! 
 //! # Prerequisites
-//!
+//! 
 //! Currently, this crate requires you compile and install `sgx_util` as
 //! a shared library.
-//!
+//! 
 //! # Usage examples
-//!
+//! 
 //! You can find usage examples in the `examples` dir of the crate.
 mod c;
 mod ias;
 
 pub use ias::*;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use std::ops::Deref;
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
 
 /// Convenience wrapper around fallible operation.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -52,9 +52,9 @@ pub fn set_verbose(verbose: bool) {
 
 /// A thin wrapper around vector of bytes. Represents quote obtained
 /// from the challenged enclave.
-///
+/// 
 /// # Accessing the underlying bytes buffer
-///
+/// 
 /// `Quote` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
 #[derive(Debug)]
@@ -83,9 +83,9 @@ impl Deref for Quote {
 
 /// A thin wrapper around vector of bytes. Represents nonce obtained
 /// from the challenged enclave.
-///
+/// 
 /// # Accessing the underlying bytes buffer
-///
+/// 
 /// `Nonce` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
 #[derive(Debug)]

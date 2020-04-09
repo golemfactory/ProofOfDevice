@@ -18,7 +18,7 @@ serde = "1"
 log = "0.4"
 env_logger = "0.6"
 structopt = "0.3"
-futures = "0.3"
+toml = "0.5"
 
 [badges]
 maintenance = { status = "actively-developed" }

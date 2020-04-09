@@ -1,20 +1,31 @@
 use actix_web::{web, App, HttpServer, Responder};
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use rust_sgx_util::{IasHandle, Nonce, Quote};
 use serde::{Deserialize, Serialize};
-use std::{env, io};
+use std::future::Future;
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::{env, fs};
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(StructOpt)]
+#[structopt(name = "pod_server", version = env!("CARGO_PKG_VERSION"))]
 struct Opt {
-    /// API key to use for IAS services.
+    /// Path to server config TOML file.
+    #[structopt(parse(from_os_str))]
+    config_path: PathBuf,
+}
+
+#[derive(Deserialize)]
+struct Config {
     api_key: String,
-    /// Address to bind to (defaults to 127.0.0.1).
-    #[structopt(long)]
-    address: Option<String>,
-    /// Port to bind to (defaults to 8088).
-    #[structopt(long)]
-    port: Option<u16>,
+    server: Option<ServerConfig>,
+}
+
+#[derive(Deserialize)]
+struct ServerConfig {
+    address: String,
+    port: u16,
 }
 
 #[derive(Debug, Deserialize)]
@@ -40,25 +51,33 @@ async fn register(info: web::Json<QuoteWithNonce>, handle: web::Data<IasHandle>)
 }
 
 #[actix_rt::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     // TODO Handle logging better.
     env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
-
+    // Read config file
     let opt = Opt::from_args();
-    let address = opt.address.unwrap_or_else(|| "127.0.0.1".to_owned());
-    let port = opt.port.unwrap_or(8088);
+    let config_file = fs::read(&opt.config_path)?;
+    let config: Config = toml::from_slice(&config_file)?;
+    let (address, port) = match &config.server {
+        Some(server_config) => (server_config.address.clone(), server_config.port),
+        None => ("127.0.0.1".to_string(), 8088),
+    };
     let address_port = [address, port.to_string()].join(":");
-    // Initialize handle to IAS services.
-    let ias_handle = IasHandle::new(&opt.api_key, None, None).map_err(|err| {
-        log::error!("Initialization of IasHandle failed with error: {}", err);
-        io::Error::new(io::ErrorKind::Other, err)
-    })?;
-    let ias_handle = web::Data::new(ias_handle);
+    // Set POD_SERVER_API_KEY env variable
+    env::set_var("POD_SERVER_API_KEY", config.api_key);
 
     HttpServer::new(move || {
         App::new()
-            .app_data(ias_handle.clone())
+            .data_factory(
+                || -> Pin<Box<dyn Future<Output = anyhow::Result<IasHandle>>>> {
+                    Box::pin(async move {
+                        let api_key = env::var("POD_SERVER_API_KEY")?;
+                        let handle = IasHandle::new(&api_key, None, None)?;
+                        Ok(handle)
+                    })
+                },
+            )
             .service(web::resource("/register").route(web::post().to(register)))
     })
     .bind(address_port)?

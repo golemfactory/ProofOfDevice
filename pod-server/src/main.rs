@@ -14,6 +14,9 @@ struct Opt {
     /// Path to server config TOML file.
     #[structopt(parse(from_os_str))]
     config_path: PathBuf,
+    /// Set verbose mode on/off.
+    #[structopt(short, long)]
+    verbose: bool,
 }
 
 #[derive(Deserialize)]
@@ -41,7 +44,8 @@ enum RegisterResponse {
 }
 
 async fn register(info: web::Json<QuoteWithNonce>, handle: web::Data<IasHandle>) -> impl Responder {
-    log::info!("Received data = {:?}", info);
+    log::info!("Received register request");
+    log::debug!("Received data = {:?}", info);
     // Verify the provided data with IAS.
     match handle.verify_quote(&info.quote, info.nonce.as_ref(), None, None, None, None) {
         Ok(()) => web::Json(RegisterResponse::Registered),
@@ -52,11 +56,15 @@ async fn register(info: web::Json<QuoteWithNonce>, handle: web::Data<IasHandle>)
 
 #[actix_rt::main]
 async fn main() -> anyhow::Result<()> {
-    // TODO Handle logging better.
-    env::set_var("RUST_LOG", "actix_web=info");
-    env_logger::init();
-    // Read config file
     let opt = Opt::from_args();
+    // Enable info logging by default.
+    env::set_var("RUST_LOG", "info");
+    if opt.verbose {
+        env::set_var("RUST_LOG", "info,rust_sgx_util=debug,pod_server=debug");
+        rust_sgx_util::set_verbose(true);
+    }
+    pretty_env_logger::init();
+    // Read config file
     let config_file = fs::read(&opt.config_path)?;
     let config: Config = toml::from_slice(&config_file)?;
     let (address, port) = match &config.server {

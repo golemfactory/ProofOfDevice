@@ -1,6 +1,9 @@
 mod entrypoints;
+mod error;
 mod models;
 mod schema;
+
+use error::AppError;
 
 #[macro_use]
 extern crate diesel;
@@ -10,11 +13,11 @@ use anyhow::anyhow;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::SqliteConnection;
 use dotenv::dotenv;
-use rust_sgx_util::IasHandle;
+use futures::channel::oneshot;
+use futures::lock::Mutex;
 use serde::Deserialize;
-use std::future::Future;
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::{env, fs};
 use structopt::StructOpt;
 
@@ -41,9 +44,11 @@ struct ServerConfig {
     port: u16,
 }
 
+pub struct Db {}
+
 pub struct AppData {
-    handle: IasHandle,
     pool: Pool<ConnectionManager<SqliteConnection>>,
+    rxs: Mutex<HashMap<String, oneshot::Receiver<Result<(), AppError>>>>,
 }
 
 #[actix_rt::main]
@@ -68,21 +73,20 @@ async fn main() -> anyhow::Result<()> {
     // Set POD_SERVER_API_KEY env variable
     env::set_var("POD_SERVER_API_KEY", config.api_key);
 
+    let db_url = env::var("DATABASE_URL")?;
+    let manager = ConnectionManager::<SqliteConnection>::new(db_url);
+    let pool = Pool::builder().build(manager)?;
+    let rxs = Mutex::new(HashMap::new());
+    let data = web::Data::new(AppData { pool, rxs });
+
     HttpServer::new(move || {
         App::new()
-            .data_factory(
-                || -> Pin<Box<dyn Future<Output = anyhow::Result<AppData>>>> {
-                    Box::pin(async move {
-                        let api_key = env::var("POD_SERVER_API_KEY")?;
-                        let handle = IasHandle::new(&api_key, None, None)?;
-                        let db_url = env::var("DATABASE_URL")?;
-                        let manager = ConnectionManager::<SqliteConnection>::new(db_url);
-                        let pool = Pool::builder().build(manager)?;
-                        Ok(AppData { handle, pool })
-                    })
-                },
+            .app_data(data.clone())
+            .route("/register", web::post().to(entrypoints::register))
+            .route(
+                "/register/{login}/status",
+                web::get().to(entrypoints::register_status),
             )
-            .service(web::resource("/register").route(web::post().to(entrypoints::register)))
     })
     .bind(address_port)?
     .run()

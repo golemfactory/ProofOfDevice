@@ -17,6 +17,31 @@ fn pub_key_from_quote(_quote: &Quote) -> String {
     "0123456789abcdef".to_string()
 }
 
+fn verify_quote_and_insert(
+    quote: &Quote,
+    nonce: Option<&Nonce>,
+    login_: &str,
+    app_data: web::Data<AppData>,
+) -> Result<(), AppError> {
+    use crate::schema::users::dsl::*;
+    // Verify the provided data with IAS.
+    let api_key = env::var("POD_SERVER_API_KEY")?;
+    let handle = IasHandle::new(&api_key, None, None)?;
+    handle.verify_quote(quote, nonce, None, None, None, None)?;
+    // Insert user to the database.
+    let pub_key_ = pub_key_from_quote(quote);
+    let new_user = NewUser {
+        login: login_.to_string(),
+        pub_key: pub_key_,
+    };
+    let conn = app_data.pool.get()?;
+    diesel::insert_into(users)
+        .values(new_user)
+        .execute(&conn)
+        .map(|_| ())?;
+    Ok(())
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RegisterInfo {
     login: String,
@@ -53,42 +78,10 @@ pub async fn register(
     let (tx, rx) = oneshot::channel();
     app_data.rxs.lock().await.insert(login_.clone(), rx);
     task::spawn_blocking(move || {
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        // Verify the provided data with IAS.
-        let api_key = match env::var("POD_SERVER_API_KEY") {
-            Ok(api_key) => api_key,
-            Err(err) => {
-                tx.send(Err(AppError::from(err))).unwrap();
-                return;
-            }
-        };
-        if let Err(err) = IasHandle::new(&api_key, None, None).and_then(|handle| {
-            handle.verify_quote(&info.quote, info.nonce.as_ref(), None, None, None, None)
-        }) {
-            tx.send(Err(AppError::from(err))).unwrap();
-            return;
-        }
-
-        // Insert user to the database.
-        let pub_key_ = pub_key_from_quote(&info.quote);
-        let new_user = NewUser {
-            login: info.login.clone(),
-            pub_key: pub_key_,
-        };
-        let conn = match app_data.pool.get() {
-            Ok(conn) => conn,
-            Err(err) => {
-                tx.send(Err(AppError::from(err))).unwrap();
-                return;
-            }
-        };
-        let res = diesel::insert_into(users)
-            .values(new_user)
-            .execute(&conn)
-            .map(|_| ())
-            .map_err(AppError::from);
-        tx.send(res).unwrap();
+        let res = verify_quote_and_insert(&info.quote, info.nonce.as_ref(), &info.login, app_data);
+        tx.send(res).unwrap()
     });
+
     let response = HttpResponse::Accepted()
         .header(header::LOCATION, format!("/register/{}/status", &login_))
         .finish();

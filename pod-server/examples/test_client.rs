@@ -23,7 +23,8 @@ struct Opt {
 }
 
 #[derive(Serialize)]
-struct QuoteWithNonce {
+struct RegisterInfo {
+    login: String,
     quote: Quote,
     nonce: Option<Nonce>,
 }
@@ -31,6 +32,7 @@ struct QuoteWithNonce {
 #[actix_rt::main]
 async fn main() -> Result<()> {
     let opt = Opt::from_args();
+    let login = "test-user-1".to_string();
     let quote = Quote::from(fs::read(&opt.quote_path)?);
     let nonce = opt.nonce.as_ref().map(|x| Nonce::from(x.as_bytes()));
     let address = opt.address.unwrap_or_else(|| "127.0.0.1".to_owned());
@@ -41,7 +43,7 @@ async fn main() -> Result<()> {
     let mut response = client
         .post(uri)
         .header("User-Agent", "TestClient")
-        .send_json(&QuoteWithNonce { quote, nonce })
+        .send_json(&RegisterInfo { login, quote, nonce })
         .await
         .map_err(|err| anyhow!("ClientRequest errored out with {:?}", err))?;
     println!("Response: {:?}", response);

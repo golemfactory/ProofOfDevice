@@ -7,6 +7,9 @@ extern crate diesel;
 
 use actix_web::{web, App, HttpServer};
 use anyhow::anyhow;
+use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::SqliteConnection;
+use dotenv::dotenv;
 use rust_sgx_util::IasHandle;
 use serde::Deserialize;
 use std::future::Future;
@@ -38,9 +41,15 @@ struct ServerConfig {
     port: u16,
 }
 
+pub struct AppData {
+    handle: IasHandle,
+    pool: Pool<ConnectionManager<SqliteConnection>>,
+}
+
 #[actix_rt::main]
 async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
+    dotenv()?;
     // Enable info logging by default.
     env::set_var("RUST_LOG", "info");
     if opt.verbose {
@@ -62,11 +71,14 @@ async fn main() -> anyhow::Result<()> {
     HttpServer::new(move || {
         App::new()
             .data_factory(
-                || -> Pin<Box<dyn Future<Output = anyhow::Result<IasHandle>>>> {
+                || -> Pin<Box<dyn Future<Output = anyhow::Result<AppData>>>> {
                     Box::pin(async move {
                         let api_key = env::var("POD_SERVER_API_KEY")?;
                         let handle = IasHandle::new(&api_key, None, None)?;
-                        Ok(handle)
+                        let db_url = env::var("DATABASE_URL")?;
+                        let manager = ConnectionManager::<SqliteConnection>::new(db_url);
+                        let pool = Pool::builder().build(manager)?;
+                        Ok(AppData { handle, pool })
                     })
                 },
             )

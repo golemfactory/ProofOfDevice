@@ -1,7 +1,14 @@
-use actix_web::{web, App, HttpServer, Responder};
+mod entrypoints;
+mod models;
+mod schema;
+
+#[macro_use]
+extern crate diesel;
+
+use actix_web::{web, App, HttpServer};
 use anyhow::anyhow;
-use rust_sgx_util::{IasHandle, Nonce, Quote};
-use serde::{Deserialize, Serialize};
+use rust_sgx_util::IasHandle;
+use serde::Deserialize;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -29,29 +36,6 @@ struct Config {
 struct ServerConfig {
     address: String,
     port: u16,
-}
-
-#[derive(Debug, Deserialize)]
-struct QuoteWithNonce {
-    quote: Quote,
-    nonce: Option<Nonce>,
-}
-
-#[derive(Serialize)]
-enum RegisterResponse {
-    Registered,
-    Error(String),
-}
-
-async fn register(info: web::Json<QuoteWithNonce>, handle: web::Data<IasHandle>) -> impl Responder {
-    log::info!("Received register request");
-    log::debug!("Received data = {:?}", info);
-    // Verify the provided data with IAS.
-    match handle.verify_quote(&info.quote, info.nonce.as_ref(), None, None, None, None) {
-        Ok(()) => web::Json(RegisterResponse::Registered),
-        // TODO Add proper mapping between error and response.
-        Err(err) => web::Json(RegisterResponse::Error(err.to_string())),
-    }
 }
 
 #[actix_rt::main]
@@ -86,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
                     })
                 },
             )
-            .service(web::resource("/register").route(web::post().to(register)))
+            .service(web::resource("/register").route(web::post().to(entrypoints::register)))
     })
     .bind(address_port)?
     .run()

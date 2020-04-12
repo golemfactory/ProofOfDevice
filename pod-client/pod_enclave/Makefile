@@ -90,6 +90,9 @@ pod_enclave_t.c: pod_enclave.edl
 pod_enclave_u.c: pod_enclave.edl
 	$(SGX_EDGER8R) $(EDGER8R_FLAGS) --untrusted $<
 
+.PHONY: install
+install: ;
+
 .PHONY: clean
 clean:
 	$(RM) *.o *.so

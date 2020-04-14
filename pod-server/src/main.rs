@@ -3,8 +3,6 @@ mod error;
 mod models;
 mod schema;
 
-use error::AppError;
-
 #[macro_use]
 extern crate diesel;
 
@@ -13,10 +11,7 @@ use anyhow::anyhow;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::SqliteConnection;
 use dotenv::dotenv;
-use futures::channel::oneshot;
-use futures::lock::Mutex;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
 use structopt::StructOpt;
@@ -44,11 +39,8 @@ struct ServerConfig {
     port: u16,
 }
 
-pub struct Db {}
-
 pub struct AppData {
     pool: Pool<ConnectionManager<SqliteConnection>>,
-    rxs: Mutex<HashMap<String, oneshot::Receiver<Result<(), AppError>>>>,
 }
 
 #[actix_rt::main]
@@ -76,17 +68,12 @@ async fn main() -> anyhow::Result<()> {
     let db_url = env::var("DATABASE_URL")?;
     let manager = ConnectionManager::<SqliteConnection>::new(db_url);
     let pool = Pool::builder().build(manager)?;
-    let rxs = Mutex::new(HashMap::new());
-    let data = web::Data::new(AppData { pool, rxs });
+    let data = web::Data::new(AppData { pool });
 
     HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
             .route("/register", web::post().to(entrypoints::register))
-            .route(
-                "/register/{login}/status",
-                web::get().to(entrypoints::register_status),
-            )
     })
     .bind(address_port)?
     .run()

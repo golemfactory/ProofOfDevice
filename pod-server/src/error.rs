@@ -1,5 +1,7 @@
+use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
+use serde_json::json;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -13,24 +15,29 @@ pub enum AppError {
     R2d2Pool(#[from] diesel::r2d2::PoolError),
     #[error("diesel result error {:?}", _0)]
     DieselResult(#[from] diesel::result::Error),
-    #[error("oneshot canceled {:?}", _0)]
-    Oneshot(#[from] futures::channel::oneshot::Canceled),
     #[error("var not found in env {:?}", _0)]
     Var(#[from] std::env::VarError),
+    #[error("spawning task failed with error: {:?}", _0)]
+    TokioJoin(#[from] tokio::task::JoinError),
 }
 
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
-        let code = match self {
-            AppError::AlreadyRegistered => StatusCode::NOT_FOUND,
-            AppError::TokioDieselAsync(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        let (code, body) = match self {
+            AppError::AlreadyRegistered => (
+                StatusCode::BAD_REQUEST,
+                "user already registered".to_string(),
+            ),
+            AppError::TokioDieselAsync(err) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err))
+            }
             // TODO map rust-sgx-util errors to status codes
-            AppError::RustSgxUtil(_) => StatusCode::BAD_REQUEST,
-            AppError::R2d2Pool(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::DieselResult(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::Oneshot(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::Var(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::RustSgxUtil(err) => (StatusCode::BAD_REQUEST, format!("{}", err)),
+            AppError::R2d2Pool(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
+            AppError::DieselResult(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
+            AppError::Var(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
+            AppError::TokioJoin(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
         };
-        HttpResponse::new(code)
+        HttpResponseBuilder::new(code).json(json!({ "description": body }))
     }
 }

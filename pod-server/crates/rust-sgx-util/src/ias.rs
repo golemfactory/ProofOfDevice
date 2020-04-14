@@ -225,7 +225,7 @@ fn path_to_c_string(path: &Path) -> Result<CString> {
 ///
 /// `Sigrl` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Sigrl(Vec<u8>);
 
@@ -278,7 +278,7 @@ impl fmt::Display for Sigrl {
 ///
 /// `GroupId` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GroupId([u8; 4]);
 

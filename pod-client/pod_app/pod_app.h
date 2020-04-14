@@ -8,7 +8,7 @@
 #define DEFAULT_ENCLAVE_PATH "pod_enclave.signed.so"
 
 /** Default file name to save public key to. */
-#define DEFAULT_PUBLIC_KEY_PATH "pod_pubkey.pem"
+#define DEFAULT_PUBLIC_KEY_PATH "pod_pubkey"
 
 /** Default file name to save enclave quote to. */
 #define DEFAULT_ENCLAVE_QUOTE_PATH "pod.quote"

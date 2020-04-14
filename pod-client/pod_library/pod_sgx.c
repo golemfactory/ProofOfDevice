@@ -8,6 +8,7 @@
 #include <sgx_uae_service.h>
 
 #include "pod_sgx.h"
+#include "pod_enclave.h"
 #include "pod_enclave_u.h"
 
 ssize_t get_file_size(int fd) {
@@ -19,16 +20,6 @@ ssize_t get_file_size(int fd) {
     return st.st_size;
 }
 
-/*!
- *  \brief Read file contents
- *
- *  \param[in]     buffer Buffer to read data to. If NULL, this function allocates one.
- *  \param[in]     path   Path to the file.
- *  \param[in,out] size   On entry, number of bytes to read. 0 means to read the entire file.
- *                        On exit, number of bytes read.
- *  \return On success, pointer to the data buffer. If \p buffer was NULL, caller should free this.
- *          On failure, NULL.
- */
 void* read_file(void* buffer, const char* path, size_t* size) {
     FILE* f = NULL;
     ssize_t fs = 0;
@@ -137,7 +128,6 @@ static sgx_status_t enclave_unload(sgx_enclave_id_t enclave_id) {
 
 static sgx_enclave_id_t g_enclave_id = 0;
 static const char* g_sealed_state_path = NULL;
-static const char* g_public_key_path = NULL;
 
 static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
                             const char* sealed_state_path, bool load_sealed_state,
@@ -151,7 +141,6 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
     }
 
     g_sealed_state_path = sealed_state_path;
-    g_public_key_path = public_key_path;
 
     g_enclave_id = enclave_load(enclave_path, debug_enabled);
     if (g_enclave_id == 0)
@@ -166,9 +155,16 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
             goto out;
     }
 
+    uint8_t enclave_public_key[EC_PUBLIC_KEY_SIZE];
     // ECALL: enclave initialization
-    sgx_status_t sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size,
-                                        public_key_path != NULL);
+    sgx_status_t sgx_ret;
+    if (public_key_path) {
+        sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size, enclave_public_key,
+                               EC_PUBLIC_KEY_SIZE);
+    } else {
+        sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size, NULL, 0);
+    }
+
     if (sgx_ret != SGX_SUCCESS) {
         fprintf(stderr, "Failed to call enclave initialization\n");
         goto out;
@@ -179,7 +175,12 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
         goto out;
     }
 
-    ret = 0;
+    if (public_key_path) {
+        printf("Saving public enclave key to '%s'\n", public_key_path);
+        ret = write_file(public_key_path, EC_PUBLIC_KEY_SIZE, &enclave_public_key);
+    } else {
+        ret = 0;
+    }
 out:
     free(sealed_keys);
     return ret;
@@ -361,27 +362,6 @@ int pod_unload_enclave(void) {
     return ret;
 }
 
-size_t pod_get_signature_size(const void* data, size_t data_size) {
-    size_t sig_size = 0;
-
-    if (g_enclave_id == 0) {
-        fprintf(stderr, "PoD enclave not loaded\n");
-        goto out;
-    }
-
-    // ECALL: get signature size
-    int ret = -1;
-    sgx_status_t sgx_ret = e_get_signature_size(g_enclave_id, &ret, data, data_size, &sig_size);
-    if (sgx_ret != SGX_SUCCESS || ret < 0) {
-        sig_size = 0;
-        fprintf(stderr, "Failed to get signature size\n");
-        goto out;
-    }
-
-out:
-    return sig_size;
-}
-
 int pod_sign_buffer(const void* data, size_t data_size, void* signature, size_t signature_size) {
     int ret = -1;
 
@@ -415,7 +395,7 @@ out:
 
 int pod_sign_file(const char* input_path, const char* signature_path) {
     int ret = -1;
-    void* signature = NULL;
+    uint8_t signature[EC_SIGNATURE_SIZE];
 
     if (!input_path || !signature_path) {
         fprintf(stderr, "Invalid path\n");
@@ -427,21 +407,11 @@ int pod_sign_file(const char* input_path, const char* signature_path) {
     if (!input)
         goto out;
 
-    size_t sig_size = pod_get_signature_size(input, input_size);
-    if (sig_size == 0)
-        goto out;
-
-    signature = malloc(sig_size);
-    if (!signature) {
-        fprintf(stderr, "No memory\n");
-        goto out;
-    }
-
-    ret = pod_sign_buffer(input, input_size, signature, sig_size);
+    ret = pod_sign_buffer(input, input_size, &signature, sizeof(signature));
     if (ret < 0)
         goto out;
 
-    ret = write_file(signature_path, sig_size, signature);
+    ret = write_file(signature_path, sizeof(signature), &signature);
     if (ret < 0)
         goto out;
 
@@ -449,7 +419,6 @@ int pod_sign_file(const char* input_path, const char* signature_path) {
     ret = 0;
 
 out:
-    free(signature);
     return ret;
 }
 
@@ -457,12 +426,6 @@ out:
 int o_store_sealed_data(const uint8_t* sealed_data, size_t sealed_size) {
     printf("Saving sealed enclave state to '%s'\n", g_sealed_state_path);
     return write_file(g_sealed_state_path, sealed_size, sealed_data);
-}
-
-// OCALL: save enclave's public RSA key
-int o_store_public_key(const uint8_t* data, size_t size) {
-    printf("Saving public enclave key to '%s'\n", g_public_key_path);
-    return write_file(g_public_key_path, size, data);
 }
 
 // OCALL: print string

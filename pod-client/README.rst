@@ -6,6 +6,10 @@ This sample consists of the PoD SGX enclave (``pod_enclave``), a shared library 
 the enclave functionality (``pod_library``) and an application that uses the library and enclave
 to perform data signing (``pod_app``).
 
+The enclave uses ED25519 keys for signing. Public key size is 32 bytes, signature size is 64 bytes.
+See `<https://en.wikipedia.org/wiki/EdDSA#Ed25519>`_.
+Enclave public key is stored in the ``report_data`` field of enclave SGX quote.
+
 Requirements
 ============
 
@@ -61,12 +65,13 @@ To generate a new enclave key pair and export enclave quote, run::
    Loading enclave from file 'pod_enclave/pod_enclave.signed.so'
    Enclave loaded successfully, id = 0x2
    Enclave initializing...
-   Generating enclave key...
-   Sealing keys...
+   Generating enclave private key...
+   Sealing enclave keys...
    Saving sealed enclave state to 'pod_data.sealed'
-   Saving public enclave key to 'pod_pubkey.pem'
-   Public enclave key hash: 36e24b93edb3acd51112db95225b2c32c0331c6d69e9da290b2235e5495ba16c
+   Enclave public key: 07a0597bfc6942f4ff01a3913cdc705cbbac232e182513aae0f1d4732807dfa9
+   Copying enclave public key...
    Enclave initialization OK
+   Saving public enclave key to 'pod_pubkey'
    Enclave quote saved to 'pod.quote'
    Enclave unloaded
 
@@ -82,12 +87,15 @@ in this example)::
    Loading sealed enclave state from 'pod_data.sealed'
    Enclave initializing...
    Unsealing enclave keys...
-   Public enclave key hash: 36e24b93edb3acd51112db95225b2c32c0331c6d69e9da290b2235e5495ba16c
+   Enclave public key: 07a0597bfc6942f4ff01a3913cdc705cbbac232e182513aae0f1d4732807dfa9
    Enclave initialization OK
-   Signature size: 512 bytes
-   Signed 12739 bytes of data
+   Signed 9083 bytes of data
    Saved signature to 'signature'
    Enclave unloaded
 
-   $ openssl dgst -sha256 -verify pod_pubkey.pem -signature signature pod_enclave/pod_enclave.c
-   Verified OK
+A simple Python script is provided for signature verification since OpenSSL command line lacks the
+ability to import raw ED25519 keys. The ``ed25519`` package is required (``pip3 install ed25519``)::
+
+   $ python3 ed_verify.py pod_pubkey signature pod_enclave/pod_enclave.c
+   Public key: 07a0597bfc6942f4ff01a3913cdc705cbbac232e182513aae0f1d4732807dfa9
+   Signature verified OK.

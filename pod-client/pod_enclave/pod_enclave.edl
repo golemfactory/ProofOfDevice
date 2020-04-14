@@ -7,16 +7,12 @@ enclave {
         public int e_initialize(
             [in, size=sealed_size] uint8_t* sealed_data,
             size_t sealed_size,
-            bool export_pubkey);
+            [out, size=pubkey_size] uint8_t* pubkey,
+            size_t pubkey_size);
 
         public int e_get_report(
             [in] const sgx_target_info_t* target_info,
             [out] sgx_report_t* report);
-
-        public int e_get_signature_size(
-            [in, size=data_size] const void* data,
-            size_t data_size,
-            [out] size_t* signature_size);
 
         public int e_sign_data(
             [in, size=data_size] const void* data,
@@ -30,10 +26,6 @@ enclave {
             [in, string] const char* str);
 
         int o_store_sealed_data(
-            [in, size=data_size] const uint8_t* data,
-            size_t data_size);
-
-        int o_store_public_key(
             [in, size=data_size] const uint8_t* data,
             size_t data_size);
     };

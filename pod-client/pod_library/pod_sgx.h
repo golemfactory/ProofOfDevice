@@ -73,22 +73,12 @@ int pod_load_enclave(const char* enclave_path, const char* sealed_state_path);
 int pod_unload_enclave(void);
 
 /*!
- *  \brief Get size needed for a PoD enclave digital signature.
- *
- *  \param[in] data      Data to sign.
- *  \param[in] data_size Size of \p data in bytes.
- *
- *  \return Size in bytes needed for digital signature of \p data.
- */
-size_t pod_get_signature_size(const void* data, size_t data_size);
-
-/*!
  *  \brief Create PoD enclave digital signature for data buffer.
  *
  *  \param[in]  data           Buffer with data to sign.
  *  \param[in]  data_size      Size of \p data in bytes.
  *  \param[out] signature      Buffer that will receive the signature.
- *  \param[in]  signature_size Size of \p signature in bytes (see pod_get_signature_size()).
+ *  \param[in]  signature_size Size of \p signature in bytes.
  *
  *  \return 0 on success, negative on error.
  */

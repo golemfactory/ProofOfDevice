@@ -29,6 +29,12 @@ struct RegisterInfo {
     nonce: Option<Nonce>,
 }
 
+#[derive(Serialize)]
+struct ChallengeResponse {
+    login: String,
+    response: String,
+}
+
 #[actix_rt::main]
 async fn main() -> Result<()> {
     let opt = Opt::from_args();
@@ -37,17 +43,65 @@ async fn main() -> Result<()> {
     let nonce = opt.nonce.as_ref().map(|x| Nonce::from(x.as_bytes()));
     let address = opt.address.unwrap_or_else(|| "127.0.0.1".to_owned());
     let port = opt.port.unwrap_or(8088);
-    let uri = format!("http://{}:{}/register", address, port);
 
+    let uri = format!("http://{}:{}/register", address, port);
     let client = Client::default();
     let mut response = client
         .post(uri)
         .header("User-Agent", "TestClient")
         .send_json(&RegisterInfo {
-            login,
+            login: login.clone(),
             quote,
             nonce,
         })
+        .await
+        .map_err(|err| anyhow!("ClientRequest errored out with {:?}", err))?;
+    println!("Response: {:?}", response);
+    let body = response
+        .body()
+        .await
+        .map_err(|err| anyhow!("ClientResponse errored out with {:?}", err))?;
+    let body: serde_json::Value = serde_json::from_slice(&body)?;
+    println!("Body: {:?}", body);
+
+    let uri = format!("http://{}:{}/auth", address, port);
+    let client = Client::default();
+    let mut response = client
+        .get(uri)
+        .header("User-Agent", "TestClient")
+        .send()
+        .await
+        .map_err(|err| anyhow!("ClientRequest errored out with {:?}", err))?;
+    println!("Response: {:?}", response);
+    let body = response
+        .body()
+        .await
+        .map_err(|err| anyhow!("ClientResponse errored out with {:?}", err))?;
+    let body: serde_json::Value = serde_json::from_slice(&body)?;
+    println!("Body: {:?}", body);
+
+    let uri = format!("http://{}:{}/auth", address, port);
+    let client = Client::default();
+    let mut response = client
+        .post(uri)
+        .header("User-Agent", "TestClient")
+        .send_json(&ChallengeResponse { login, response: "0123456789abcdef".to_string() })
+        .await
+        .map_err(|err| anyhow!("ClientRequest errored out with {:?}", err))?;
+    println!("Response: {:?}", response);
+    let body = response
+        .body()
+        .await
+        .map_err(|err| anyhow!("ClientResponse errored out with {:?}", err))?;
+    let body: serde_json::Value = serde_json::from_slice(&body)?;
+    println!("Body: {:?}", body);
+
+    let uri = format!("http://{}:{}", address, port);
+    let client = Client::default();
+    let mut response = client
+        .get(uri)
+        .header("User-Agent", "TestClient")
+        .send()
         .await
         .map_err(|err| anyhow!("ClientRequest errored out with {:?}", err))?;
     println!("Response: {:?}", response);

@@ -6,7 +6,8 @@ mod schema;
 #[macro_use]
 extern crate diesel;
 
-use actix_web::{web, App, HttpServer};
+use actix_redis::RedisSession;
+use actix_web::{middleware, web, App, HttpServer};
 use anyhow::anyhow;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::SqliteConnection;
@@ -28,13 +29,20 @@ struct Opt {
 }
 
 #[derive(Deserialize)]
-struct Config {
+struct ServerConfig {
     api_key: String,
-    server: Option<ServerConfig>,
+    redis: RedisConfig,
+    bind: Option<BindAddress>,
 }
 
 #[derive(Deserialize)]
-struct ServerConfig {
+struct RedisConfig {
+    address: String,
+    key: String,
+}
+
+#[derive(Deserialize)]
+struct BindAddress {
     address: String,
     port: u16,
 }
@@ -56,8 +64,8 @@ async fn main() -> anyhow::Result<()> {
     pretty_env_logger::init();
     // Read config file
     let config_file = fs::read(&opt.config_path)?;
-    let config: Config = toml::from_slice(&config_file)?;
-    let (address, port) = match &config.server {
+    let config: ServerConfig = toml::from_slice(&config_file)?;
+    let (address, port) = match &config.bind {
         Some(server_config) => (server_config.address.clone(), server_config.port),
         None => ("127.0.0.1".to_string(), 8088),
     };
@@ -69,12 +77,22 @@ async fn main() -> anyhow::Result<()> {
     let manager = ConnectionManager::<SqliteConnection>::new(db_url);
     let pool = Pool::builder().build(manager)?;
     let data = web::Data::new(AppData { pool });
+    // Redis config
+    let redis_address = config.redis.address.clone();
+    let redis_key = config.redis.key.clone();
 
     HttpServer::new(move || {
         App::new()
+            .wrap(RedisSession::new(redis_address.clone(), redis_key.as_bytes()))
+            .wrap(middleware::Logger::default())
             .app_data(data.clone())
+            .route("/", web::get().to(entrypoints::index))
             .route("/register", web::post().to(entrypoints::register))
-            .route("/verify", web::post().to(entrypoints::verify))
+            .service(
+                web::resource("/auth")
+                    .route(web::get().to(entrypoints::get_auth))
+                    .route(web::post().to(entrypoints::auth)),
+            )
     })
     .bind(address_port)?
     .run()

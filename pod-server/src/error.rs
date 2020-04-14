@@ -9,6 +9,12 @@ pub enum AppError {
     AlreadyRegistered,
     #[error("User not registered yet")]
     NotRegistered,
+    #[error("Invalid challenge")]
+    InvalidChallenge,
+    #[error("Invalid cookie")]
+    InvalidCookie,
+    #[error("User not authenticated")]
+    NotAuthenticated,
     #[error("tokio_diesel async op failed with error: {:?}", _0)]
     TokioDieselAsync(#[from] tokio_diesel::AsyncError),
     #[error("rust_sgx_util error: {:?}", _0)]
@@ -21,29 +27,34 @@ pub enum AppError {
     Var(#[from] std::env::VarError),
     #[error("spawning task failed with error: {:?}", _0)]
     TokioJoin(#[from] tokio::task::JoinError),
+    #[error("decoding base64 to blob: {:?}", _0)]
+    Base64Decode(#[from] base64::DecodeError),
+    #[error("parsing ed25519 signature: {:?}", _0)]
+    Ed25519Signature(#[from] ed25519_dalek::SignatureError),
+    #[error("fetching entropy: {:?}", _0)]
+    GetRandom(#[from] getrandom::Error),
 }
 
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
-        let (code, body) = match self {
-            AppError::AlreadyRegistered => (
-                StatusCode::BAD_REQUEST,
-                "user already registered".to_string(),
-            ),
-            AppError::NotRegistered => (
-                StatusCode::BAD_REQUEST,
-                "user not registered yet".to_string(),
-            ),
-            AppError::TokioDieselAsync(err) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err))
-            }
+        let code = match self {
+            AppError::AlreadyRegistered => StatusCode::BAD_REQUEST,
+            AppError::NotRegistered => StatusCode::BAD_REQUEST,
+            AppError::InvalidChallenge => StatusCode::BAD_REQUEST,
+            AppError::InvalidCookie => StatusCode::BAD_REQUEST,
+            AppError::NotAuthenticated => StatusCode::UNAUTHORIZED,
+            AppError::TokioDieselAsync(_) => StatusCode::INTERNAL_SERVER_ERROR,
             // TODO map rust-sgx-util errors to status codes
-            AppError::RustSgxUtil(err) => (StatusCode::BAD_REQUEST, format!("{}", err)),
-            AppError::R2d2Pool(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
-            AppError::DieselResult(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
-            AppError::Var(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
-            AppError::TokioJoin(err) => (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err)),
+            AppError::RustSgxUtil(_) => StatusCode::BAD_REQUEST,
+            AppError::R2d2Pool(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::DieselResult(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Var(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::TokioJoin(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Base64Decode(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Ed25519Signature(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::GetRandom(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
+        let body = format!("{}", self);
         HttpResponseBuilder::new(code).json(json!({ "description": body }))
     }
 }

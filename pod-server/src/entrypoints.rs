@@ -9,7 +9,7 @@ use rust_sgx_util::{IasHandle, Nonce, Quote};
 use serde::Deserialize;
 use std::env;
 use tokio::task;
-use tokio_diesel::AsyncRunQueryDsl;
+use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
 
 fn pub_key_from_quote(_quote: &Quote) -> String {
     "0123456789abcdef".to_string()
@@ -42,15 +42,15 @@ pub async fn register(
     );
     log::debug!("Received data: {:?}", info);
 
-    // Check if user is already registered.
+    // Check if the user is already registered.
     let result = users
         .filter(login.eq(info.login.clone()))
-        .limit(1)
-        .load_async::<User>(&app_data.pool)
-        .await?;
+        .get_result_async::<User>(&app_data.pool)
+        .await
+        .optional()?;
     log::debug!("Matching user records found: {:?}", result);
 
-    if result.len() > 0 {
+    if let Some(_) = result {
         log::info!("User already registered.");
         return Err(AppError::AlreadyRegistered);
     }
@@ -73,6 +73,33 @@ pub async fn register(
         .await?;
 
     log::info!("User '{}' successfully inserted into db.", info.login);
+
+    Ok(HttpResponse::Ok())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VerifyInfo {
+    login: String,
+}
+
+pub async fn verify(info: web::Json<VerifyInfo>, app_data: web::Data<AppData>) -> impl Responder {
+    use crate::schema::users::dsl::*;
+
+    log::info!(
+        "Received verify request for user with login '{}'.",
+        info.login
+    );
+
+    // Fetch user's record and extract their pub_key.
+    let record = users
+        .filter(login.eq(info.login.clone()))
+        .get_result_async::<User>(&app_data.pool)
+        .await
+        .optional()?;
+    let record = match record {
+        Some(record) => record,
+        None => return Err(AppError::NotRegistered),
+    };
 
     Ok(HttpResponse::Ok())
 }

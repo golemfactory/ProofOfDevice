@@ -74,6 +74,7 @@ async fn main() -> anyhow::Result<()> {
         App::new()
             .app_data(data.clone())
             .route("/register", web::post().to(entrypoints::register))
+            .route("/verify", web::post().to(entrypoints::verify))
     })
     .bind(address_port)?
     .run()

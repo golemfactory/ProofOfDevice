@@ -1,5 +1,5 @@
 CREATE TABLE users (
     id INTEGER NOT NULL PRIMARY KEY,
-    login TEXT NOT NULL,
+    login TEXT NOT NULL UNIQUE,
     pub_key TEXT NOT NULL
 )

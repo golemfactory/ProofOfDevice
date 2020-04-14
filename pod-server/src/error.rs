@@ -7,6 +7,8 @@ use serde_json::json;
 pub enum AppError {
     #[error("User already registered")]
     AlreadyRegistered,
+    #[error("User not registered yet")]
+    NotRegistered,
     #[error("tokio_diesel async op failed with error: {:?}", _0)]
     TokioDieselAsync(#[from] tokio_diesel::AsyncError),
     #[error("rust_sgx_util error: {:?}", _0)]
@@ -27,6 +29,10 @@ impl ResponseError for AppError {
             AppError::AlreadyRegistered => (
                 StatusCode::BAD_REQUEST,
                 "user already registered".to_string(),
+            ),
+            AppError::NotRegistered => (
+                StatusCode::BAD_REQUEST,
+                "user not registered yet".to_string(),
             ),
             AppError::TokioDieselAsync(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", err))

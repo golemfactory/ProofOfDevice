@@ -12,7 +12,7 @@ struct Opt {
     /// Server address to connect to (defaults to 127.0.0.1).
     #[structopt(long)]
     address: Option<String>,
-    /// Server port to connect to (defaults to 8088).
+    /// Server port to connect to (defaults to 8080).
     #[structopt(long)]
     port: Option<u16>,
     #[structopt(subcommand)]
@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
 
     let address = opt.address.unwrap_or_else(|| "127.0.0.1".to_owned());
-    let port = opt.port.unwrap_or(8088);
+    let port = opt.port.unwrap_or(8080);
     let base_uri = format!("http://{}:{}", address, port);
     let client = Client::default();
 

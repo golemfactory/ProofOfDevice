@@ -62,7 +62,7 @@ async fn main() -> anyhow::Result<()> {
     let config: ServerConfig = toml::from_slice(&config_file)?;
     let (address, port) = match &config.bind {
         Some(server_config) => (server_config.address.clone(), server_config.port),
-        None => ("127.0.0.1".to_string(), 8088),
+        None => ("127.0.0.1".to_string(), 8080),
     };
     let address_port = [address, port.to_string()].join(":");
     // Set POD_SERVER_API_KEY env variable

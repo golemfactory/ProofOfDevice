@@ -12,10 +12,12 @@
 //! You can find usage examples in the `examples` dir of the crate.
 mod c;
 mod ias;
+#[cfg(feature = "with_serde")]
+mod ser_de;
 
 pub use ias::*;
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "with_serde")]
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
@@ -57,9 +59,14 @@ pub fn set_verbose(verbose: bool) {
 ///
 /// `Quote` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
+///
+/// # Serializing/deserializing
+///
+/// With `with_serde` feature enabled, `Quote` can be serialized and deserialized
+/// as base64 `String`.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Quote(Vec<u8>);
+#[cfg_attr(feature = "with_serde", derive(Serialize, Deserialize))]
+pub struct Quote(#[cfg_attr(feature = "with_serde", serde(with = "ser_de"))] Vec<u8>);
 
 impl From<&[u8]> for Quote {
     fn from(bytes: &[u8]) -> Self {
@@ -88,9 +95,14 @@ impl Deref for Quote {
 ///
 /// `Nonce` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
+/// 
+/// # Serializing/deserializing
+///
+/// With `with_serde` feature enabled, `Nonce` can be serialized and deserialized
+/// as base64 `String`.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Nonce(Vec<u8>);
+#[cfg_attr(feature = "with_serde", derive(Serialize, Deserialize))]
+pub struct Nonce(#[cfg_attr(feature = "with_serde", serde(with = "ser_de"))] Vec<u8>);
 
 impl From<&[u8]> for Nonce {
     fn from(bytes: &[u8]) -> Self {

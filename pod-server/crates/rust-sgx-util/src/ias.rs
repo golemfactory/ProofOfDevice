@@ -1,5 +1,5 @@
 use crate::{c, Error, Nonce, Quote, Result};
-#[cfg(feature = "serde")]
+#[cfg(feature = "with_serde")]
 use serde::{Deserialize, Serialize};
 use std::ffi::CString;
 use std::ops::Deref;
@@ -225,9 +225,14 @@ fn path_to_c_string(path: &Path) -> Result<CString> {
 ///
 /// `Sigrl` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
+///
+/// # Serializing/deserializing
+///
+/// With `with_serde` feature enabled, `Sigrl` can be serialized and deserialized
+/// as base64 `String`.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Sigrl(Vec<u8>);
+#[cfg_attr(feature = "with_serde", derive(Serialize, Deserialize))]
+pub struct Sigrl(#[cfg_attr(feature = "with_serde", serde(with = "crate::ser_de"))] Vec<u8>);
 
 impl Sigrl {
     unsafe fn new(raw: *const u8, size: usize) -> Self {
@@ -279,7 +284,8 @@ impl fmt::Display for Sigrl {
 /// `GroupId` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "with_serde", derive(Serialize, Deserialize))]
+// TODO cleanup construction and ser/de
 pub struct GroupId([u8; 4]);
 
 impl Deref for GroupId {

@@ -43,9 +43,9 @@ async fn main() -> Result<()> {
     let nonce = opt.nonce.as_ref().map(|x| Nonce::from(x.as_bytes()));
     let address = opt.address.unwrap_or_else(|| "127.0.0.1".to_owned());
     let port = opt.port.unwrap_or(8088);
+    let client = Client::default();
 
     let uri = format!("http://{}:{}/register", address, port);
-    let client = Client::default();
     let mut response = client
         .post(uri)
         .header("User-Agent", "TestClient")
@@ -65,7 +65,6 @@ async fn main() -> Result<()> {
     println!("Body: {:?}", body);
 
     let uri = format!("http://{}:{}/auth", address, port);
-    let client = Client::default();
     let mut response = client
         .get(uri)
         .header("User-Agent", "TestClient")
@@ -81,7 +80,6 @@ async fn main() -> Result<()> {
     println!("Body: {:?}", body);
 
     let uri = format!("http://{}:{}/auth", address, port);
-    let client = Client::default();
     let mut response = client
         .post(uri)
         .header("User-Agent", "TestClient")
@@ -97,7 +95,6 @@ async fn main() -> Result<()> {
     println!("Body: {:?}", body);
 
     let uri = format!("http://{}:{}", address, port);
-    let client = Client::default();
     let mut response = client
         .get(uri)
         .header("User-Agent", "TestClient")

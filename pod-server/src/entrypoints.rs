@@ -90,12 +90,16 @@ pub async fn get_auth(session: Session) -> impl Responder {
         Err(_) => return Err(AppError::InvalidCookie),
         Ok(Some(challenge)) => challenge,
         Ok(None) => {
-            let mut blob = [0u8; 32];
+            let mut blob = [0u8; 64];
             getrandom::getrandom(&mut blob)?;
-            let challenge = base64::encode(&blob);
+            let challenge = base64::encode(&blob[..]);
+
+            log::debug!("Generated challenge: {}", challenge);
+
             if let Err(_) = session.set("challenge", challenge.clone()) {
                 return Err(AppError::InvalidCookie);
             }
+
             challenge
         }
     };

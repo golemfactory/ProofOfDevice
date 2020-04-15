@@ -13,7 +13,6 @@ description = "An implementation of proof-of-device web server."
 actix-web = "2"
 actix-rt = "1"
 actix-session = "0.3"
-actix-redis = { version = "0.8", features = ["web"] }
 rust-sgx-util = { path = "crates/rust-sgx-util", features = ["serde"], version = "0.1.1" }
 anyhow = "1"
 thiserror = "1"

@@ -6,7 +6,7 @@ mod schema;
 #[macro_use]
 extern crate diesel;
 
-use actix_redis::RedisSession;
+use actix_session::CookieSession;
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::anyhow;
 use diesel::r2d2::{ConnectionManager, Pool};
@@ -31,14 +31,8 @@ struct Opt {
 #[derive(Deserialize)]
 struct ServerConfig {
     api_key: String,
-    redis: RedisConfig,
+    cookie_key: String,
     bind: Option<BindAddress>,
-}
-
-#[derive(Deserialize)]
-struct RedisConfig {
-    address: String,
-    key: String,
 }
 
 #[derive(Deserialize)]
@@ -77,13 +71,12 @@ async fn main() -> anyhow::Result<()> {
     let manager = ConnectionManager::<SqliteConnection>::new(db_url);
     let pool = Pool::builder().build(manager)?;
     let data = web::Data::new(AppData { pool });
-    // Redis config
-    let redis_address = config.redis.address.clone();
-    let redis_key = config.redis.key.clone();
+    // Cookie config
+    let cookie_key = config.cookie_key.clone();
 
     HttpServer::new(move || {
         App::new()
-            .wrap(RedisSession::new(redis_address.clone(), redis_key.as_bytes()))
+            .wrap(CookieSession::signed(cookie_key.as_bytes()))
             .wrap(middleware::Logger::default())
             .app_data(data.clone())
             .route("/", web::get().to(entrypoints::index))

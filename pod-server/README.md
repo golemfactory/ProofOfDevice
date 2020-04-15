@@ -18,14 +18,37 @@ it by appending a `[server]` section to the config file:
 
 ```toml
 api_key = "0123456abcdef"
+cookie_key = "0123456abcdef"
 
 [server]
 address = "127.0.0.1"
 port = 8080
 ```
 
-Finally, when invoking the server from the command line, at present, you are
-required to specify the path to the config file:
+The server uses [`diesel`] crate as the ORM and SQLite as the database. In order
+to configure the database for use with the app, firstly, you need to specify the
+path to the database file in `.env` file:
+
+```
+DATABASE_URL=mock.db
+```
+
+Secondly, before actually firing up the server for the first time, you need to
+init the db:
+
+```
+diesel setup
+```
+
+Then, and this step should occur whenver you want to redo the tables, re-run
+the migrations:
+
+```
+diesel migration run
+```
+
+Finally, when invoking the server from the command line, you are required to
+specify the path to the config file:
 
 ```
 cargo run -- config.toml -v

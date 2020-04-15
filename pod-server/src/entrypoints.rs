@@ -4,6 +4,7 @@ use crate::models::{NewUser, User};
 
 use diesel::prelude::*;
 
+use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::{web, HttpResponse, Responder};
 use rust_sgx_util::{IasHandle, Nonce, Quote};
@@ -16,7 +17,8 @@ use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
 fn pub_key_from_quote(quote: &Quote) -> String {
     let (start, stop) = (48 + 320, 48 + 320 + 64);
     let as_bytes = &quote[start..stop];
-    base64::encode(as_bytes)
+    // ED25519 public key is 32 bytes long
+    base64::encode(&as_bytes[..32])
 }
 
 fn verify_quote(quote: &Quote, nonce: Option<&Nonce>) -> Result<(), AppError> {
@@ -82,7 +84,12 @@ pub async fn register(
     Ok(HttpResponse::Ok())
 }
 
-pub async fn get_auth(session: Session) -> impl Responder {
+pub async fn get_auth(session: Session, identity: Identity) -> impl Responder {
+    if let Some(id) = identity.identity() {
+        log::info!("User '{}' already authenticated!", id);
+        return Err(AppError::AlreadyAuthenticated);
+    }
+
     log::info!("Received challenge request.");
 
     // Send challenge.
@@ -117,7 +124,13 @@ pub async fn auth(
     response: web::Json<AuthChallengeResponse>,
     app_data: web::Data<AppData>,
     session: Session,
+    identity: Identity,
 ) -> impl Responder {
+    if let Some(ident) = identity.identity() {
+        log::info!("User '{}' already authenticated!", ident);
+        return Err(AppError::AlreadyAuthenticated);
+    }
+
     use crate::schema::users::dsl::*;
 
     log::info!(
@@ -149,21 +162,15 @@ pub async fn auth(
     let signature = ed25519_dalek::Signature::from_bytes(&enc_blob)?;
     pub_key_.verify(&blob, &signature)?;
 
-    if let Err(_) = session.set("user_id", response.login.clone()) {
-        return Err(AppError::InvalidCookie);
-    }
-    session.renew();
+    identity.remember(response.login.clone());
+    session.purge();
 
     Ok(HttpResponse::Ok())
 }
 
-pub async fn index(session: Session) -> impl Responder {
-    log::debug!("{:?}", session.get::<String>("challenge"));
-    match session
-        .get::<String>("user_id")
-        .map_err(|_| AppError::InvalidCookie)?
-    {
-        Some(_) => Ok(HttpResponse::Ok()),
+pub async fn index(identity: Identity) -> impl Responder {
+    match identity.identity() {
+        Some(_) => Ok(HttpResponse::Ok().json(json!({"description": "You are authenticated!"}))),
         None => Err(AppError::NotAuthenticated),
     }
 }

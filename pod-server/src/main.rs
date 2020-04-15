@@ -6,6 +6,7 @@ mod schema;
 #[macro_use]
 extern crate diesel;
 
+use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_session::CookieSession;
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::anyhow;
@@ -76,7 +77,16 @@ async fn main() -> anyhow::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .wrap(CookieSession::signed(cookie_key.as_bytes()))
+            .wrap(
+                CookieSession::signed(cookie_key.as_bytes())
+                    .name("session")
+                    .secure(false),
+            )
+            .wrap(IdentityService::new(
+                CookieIdentityPolicy::new(cookie_key.as_bytes())
+                    .name("auth")
+                    .secure(false),
+            ))
             .wrap(middleware::Logger::default())
             .app_data(data.clone())
             .route("/", web::get().to(entrypoints::index))

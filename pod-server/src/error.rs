@@ -15,6 +15,8 @@ pub enum AppError {
     InvalidCookie,
     #[error("User not authenticated")]
     NotAuthenticated,
+    #[error("User already authenticated")]
+    AlreadyAuthenticated,
     #[error("tokio_diesel async op failed with error: {:?}", _0)]
     TokioDieselAsync(#[from] tokio_diesel::AsyncError),
     #[error("rust_sgx_util error: {:?}", _0)]
@@ -43,6 +45,7 @@ impl ResponseError for AppError {
             AppError::InvalidChallenge => StatusCode::BAD_REQUEST,
             AppError::InvalidCookie => StatusCode::BAD_REQUEST,
             AppError::NotAuthenticated => StatusCode::UNAUTHORIZED,
+            AppError::AlreadyAuthenticated => StatusCode::BAD_REQUEST,
             AppError::TokioDieselAsync(_) => StatusCode::INTERNAL_SERVER_ERROR,
             // TODO map rust-sgx-util errors to status codes
             AppError::RustSgxUtil(_) => StatusCode::BAD_REQUEST,
@@ -51,7 +54,7 @@ impl ResponseError for AppError {
             AppError::Var(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::TokioJoin(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Base64Decode(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::Ed25519Signature(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Ed25519Signature(_) => StatusCode::BAD_REQUEST,
             AppError::GetRandom(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
         let body = format!("{}", self);

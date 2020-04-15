@@ -10,6 +10,17 @@
 //! # Usage examples
 //!
 //! You can find usage examples in the `examples` dir of the crate.
+//!
+//! # Enabling `serde` support
+//!
+//! By default, `serde` support for serialization/deserialization of client-side structures
+//! such as [`Quote`] is not enabled. To enable it, specify `with_serde` feature flag in your
+//! `Cargo.toml`:
+//!
+//! ```toml
+//! rust-sgx-util = { version = "0.2", features = ["with_serde"] }
+//! ```
+//!
 mod c;
 mod ias;
 #[cfg(feature = "with_serde")]

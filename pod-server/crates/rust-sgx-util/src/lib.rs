@@ -1,23 +1,36 @@
 //! A safe wrapper around Graphene's [`sgx_util`] C-library.
-//! 
+//!
 //! [`sgx_util`]: https://github.com/oscarlab/graphene/tree/master/Pal/src/host/Linux-SGX/tools
+//!
+//! ```toml
+//! rust-sgx-util = "0.2"
+//! ```
 //! 
-//! # Prerequisites
+//! For `serde` support, you can enable it with `with_serde` feature:
+//! 
+//! ```toml
+//! rust-sgx-util = { version = "0.2", features = ["with_serde"] }
+//! ```
+//! 
+//! ## Prerequisites
 //! 
 //! Currently, this crate requires you compile and install `sgx_util` as
 //! a shared library.
 //! 
-//! # Usage examples
+//! ## Usage examples
 //! 
 //! You can find usage examples in the `examples` dir of the crate.
+//!
 mod c;
 mod ias;
+#[cfg(feature = "with_serde")]
+mod ser_de;
 
 pub use ias::*;
 
+#[cfg(feature = "with_serde")]
+use serde::{Deserialize, Serialize};
 use std::ops::Deref;
-#[cfg(feature = "serde")]
-use serde::{Serialize, Deserialize};
 
 /// Convenience wrapper around fallible operation.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -52,14 +65,19 @@ pub fn set_verbose(verbose: bool) {
 
 /// A thin wrapper around vector of bytes. Represents quote obtained
 /// from the challenged enclave.
-/// 
+///
 /// # Accessing the underlying bytes buffer
-/// 
+///
 /// `Quote` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
-#[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Quote(Vec<u8>);
+///
+/// # Serializing/deserializing
+///
+/// With `with_serde` feature enabled, `Quote` can be serialized and deserialized
+/// as base64 `String`.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "with_serde", derive(Serialize, Deserialize))]
+pub struct Quote(#[cfg_attr(feature = "with_serde", serde(with = "ser_de"))] Vec<u8>);
 
 impl From<&[u8]> for Quote {
     fn from(bytes: &[u8]) -> Self {
@@ -83,14 +101,19 @@ impl Deref for Quote {
 
 /// A thin wrapper around vector of bytes. Represents nonce obtained
 /// from the challenged enclave.
-/// 
+///
 /// # Accessing the underlying bytes buffer
-/// 
+///
 /// `Nonce` implements `Deref<Target=[u8]>`, therefore dereferencing it will
 /// yield its inner buffer of bytes.
-#[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Nonce(Vec<u8>);
+/// 
+/// # Serializing/deserializing
+///
+/// With `with_serde` feature enabled, `Nonce` can be serialized and deserialized
+/// as base64 `String`.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "with_serde", derive(Serialize, Deserialize))]
+pub struct Nonce(#[cfg_attr(feature = "with_serde", serde(with = "ser_de"))] Vec<u8>);
 
 impl From<&[u8]> for Nonce {
     fn from(bytes: &[u8]) -> Self {

@@ -1,6 +1,6 @@
 [package]
 name = "rust-sgx-util"
-version = "0.1.1"
+version = "0.2.1"
 authors = ["Jakub Konka <jakub.konka@golem.network>"]
 edition = "2018"
 license = "LGPL-3.0"
@@ -14,10 +14,15 @@ description = "A safe wrapper around Graphene `sgx-util` C-library."
 libc = "0.2"
 thiserror = "1"
 serde = { version = "1", features = ["derive"], optional = true}
+base64 =  { version = "0.12", optional = true }
 
 [dev-dependencies]
 structopt = "0.3"
 anyhow = "1"
+
+[features]
+default = []
+with_serde = ["serde", "base64"]
 
 [badges]
 maintenance = { status = "actively-developed" }

@@ -13,8 +13,10 @@ use std::env;
 use tokio::task;
 use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
 
-fn pub_key_from_quote(_quote: &Quote) -> String {
-    "0123456789abcdef".to_string()
+fn pub_key_from_quote(quote: &Quote) -> String {
+    let (start, stop) = (48 + 320, 48 + 320 + 64);
+    let as_bytes = &quote[start..stop];
+    base64::encode(as_bytes)
 }
 
 fn verify_quote(quote: &Quote, nonce: Option<&Nonce>) -> Result<(), AppError> {
@@ -63,6 +65,7 @@ pub async fn register(
 
     // Extract pub_key from Quote
     let pub_key_ = pub_key_from_quote(&info.quote);
+    log::debug!("Extracted public key (base64 encoded): {:?}", pub_key_);
 
     // Insert user to the database.
     let new_user = NewUser {

@@ -2,24 +2,24 @@
 //!
 //! [`sgx_util`]: https://github.com/oscarlab/graphene/tree/master/Pal/src/host/Linux-SGX/tools
 //!
-//! # Prerequisites
-//!
-//! Currently, this crate requires you compile and install `sgx_util` as
-//! a shared library.
-//!
-//! # Usage examples
-//!
-//! You can find usage examples in the `examples` dir of the crate.
-//!
-//! # Enabling `serde` support
-//!
-//! By default, `serde` support for serialization/deserialization of client-side structures
-//! such as [`Quote`] is not enabled. To enable it, specify `with_serde` feature flag in your
-//! `Cargo.toml`:
-//!
+//! ```toml
+//! rust-sgx-util = "0.2"
+//! ```
+//! 
+//! For `serde` support, you can enable it with `with_serde` feature:
+//! 
 //! ```toml
 //! rust-sgx-util = { version = "0.2", features = ["with_serde"] }
 //! ```
+//! 
+//! ## Prerequisites
+//! 
+//! Currently, this crate requires you compile and install `sgx_util` as
+//! a shared library.
+//! 
+//! ## Usage examples
+//! 
+//! You can find usage examples in the `examples` dir of the crate.
 //!
 mod c;
 mod ias;

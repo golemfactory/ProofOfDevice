@@ -14,7 +14,7 @@ actix-web = "2"
 actix-rt = "1"
 actix-session = "0.3"
 actix-identity = "0.2"
-rust-sgx-util = { path = "crates/rust-sgx-util", features = ["with_serde"], version = "0.2.0" }
+rust-sgx-util = { path = "crates/rust-sgx-util", features = ["with_serde"], version = "0.2.1" }
 anyhow = "1"
 thiserror = "1"
 serde = "1"

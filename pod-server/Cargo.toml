@@ -32,6 +32,9 @@ getrandom = "0.1"
 base64 = "0.12"
 ed25519-dalek = "1.0.0-pre.3"
 
+[dev-dependencies]
+libc = "0.2"
+
 [badges]
 maintenance = { status = "actively-developed" }
 

@@ -25,7 +25,7 @@ fn verify_quote(quote: &Quote, nonce: Option<&Nonce>) -> Result<(), AppError> {
     // Verify the provided data with IAS.
     let api_key = env::var("POD_SERVER_API_KEY")?;
     let handle = IasHandle::new(&api_key, None, None)?;
-    // handle.verify_quote(quote, nonce, None, None, None, None)?;
+    handle.verify_quote(quote, nonce, None, None, None, None)?;
     Ok(())
 }
 

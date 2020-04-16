@@ -61,20 +61,6 @@ async fn main() -> anyhow::Result<()> {
     let base_uri = format!("http://{}:{}", address, port);
     let client = Client::default();
 
-    // Try loading keys from test_key
-    let keypair = match fs::read("test_key") {
-        Ok(bytes) => {
-            let keypair = ed25519_dalek::Keypair::from_bytes(&bytes)?;
-            keypair
-        }
-        Err(_) => {
-            let mut csprng = rand::rngs::OsRng;
-            let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
-            fs::write("test_key", &keypair.to_bytes()[..])?;
-            keypair
-        }
-    };
-
     match opt.cmd {
         Command::Register {
             login,
@@ -83,13 +69,6 @@ async fn main() -> anyhow::Result<()> {
         } => {
             let quote = Quote::from(fs::read(&quote_path)?);
             let nonce = nonce.as_ref().map(|x| Nonce::from(x.as_bytes()));
-
-            // Inject an actual ED25519 key into the quote
-            let mut quote = quote.to_vec();
-            let (start, stop) = (48 + 320, 48 + 320 + 32);
-            let pub_key = keypair.public.as_bytes();
-            &mut quote[start..stop].copy_from_slice(pub_key);
-            let quote = Quote::from(quote);
 
             println!("POST /register");
             let mut response = client
@@ -135,13 +114,12 @@ async fn main() -> anyhow::Result<()> {
             let json: serde_json::Value = serde_json::from_slice(&body)?;
             println!("    | body: {}", json);
 
-            // Process challenge
+            // TODO Process challenge
             let challenge = json["challenge"]
                 .as_str()
                 .ok_or(anyhow!("invalid String for challenge"))?;
             let challenge = base64::decode(challenge)?;
-            let response = keypair.sign(&challenge);
-            let response = base64::encode(&response.to_bytes()[..]);
+            let response = base64::encode(&challenge);
 
             println!("\nPOST /auth");
             let mut builder = client

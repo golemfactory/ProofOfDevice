@@ -29,7 +29,6 @@ tokio-diesel = "0.3"
 dotenv = "0.9"
 futures = "0.3" 
 getrandom = "0.1"
-rand = "0.7"
 base64 = "0.12"
 ed25519-dalek = "1.0.0-pre.3"
 

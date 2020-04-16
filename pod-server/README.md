@@ -125,11 +125,10 @@ For some end-to-end testing, you can use the provided simple test client which
 exposes two bits of functionality: registering and authenticating with the
 service.
 
-The former takes a username and path to IAS Quote as arguments with
-optional nonce:
+The former takes a username and Service Provider's ID (SPID):
 
 ```
-cargo run --example test_client -- register johndoe <path_to_quote> --nonce "deadbeef123456"
+cargo run --example test_client -- register johndoe deadbeef123456
 ```
 
 This command will initiate a POST request to `/register` entrypoint.

@@ -79,11 +79,44 @@ fn init_enclave<P: AsRef<Path>>(
     }
 }
 
+fn load_enclave<P: AsRef<Path>>(enclave_path: P, sealed_state_path: P) -> anyhow::Result<()> {
+    let enclave_path = path_to_c_string(enclave_path)?;
+    let sealed_state_path = path_to_c_string(sealed_state_path)?;
+    let ret = unsafe { pod_load_enclave(enclave_path.as_ptr(), sealed_state_path.as_ptr()) };
+    if ret != 0 {
+        Err(anyhow!(
+            "pod_load_enclave returned non-zero exit code: {}",
+            ret
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 fn unload_enclave() -> anyhow::Result<()> {
     let ret = unsafe { pod_unload_enclave() };
     if ret != 0 {
         Err(anyhow!(
             "pod_unload_enclave returned non-zero exit code: {}",
+            ret
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn sign_with_enclave(message: &[u8], signature: &mut [u8]) -> anyhow::Result<()> {
+    let ret = unsafe {
+        pod_sign_buffer(
+            message.as_ptr() as *const _,
+            message.len(),
+            signature.as_mut_ptr() as *mut _,
+            signature.len(),
+        )
+    };
+    if ret != 0 {
+        Err(anyhow!(
+            "pod_sign_buffer returned non-zero exit code: {}",
             ret
         ))
     } else {
@@ -205,12 +238,16 @@ async fn main() -> anyhow::Result<()> {
             let json: serde_json::Value = serde_json::from_slice(&body)?;
             println!("    | body: {}", json);
 
-            // TODO Process challenge
+            // Process challenge
+            load_enclave(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
             let challenge = json["challenge"]
                 .as_str()
                 .ok_or(anyhow!("invalid String for challenge"))?;
             let challenge = base64::decode(challenge)?;
-            let response = base64::encode(&challenge);
+            let response = &mut [0u8; 64];
+            sign_with_enclave(&challenge, response)?;
+            let response = base64::encode(&response[..]);
+            unload_enclave()?;
 
             println!("\nPOST /auth");
             let mut builder = client

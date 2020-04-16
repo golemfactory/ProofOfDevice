@@ -14,7 +14,7 @@ actix-web = "2"
 actix-rt = "1"
 actix-session = "0.3"
 actix-identity = "0.2"
-rust-sgx-util = { path = "crates/rust-sgx-util", features = ["with_serde"], version = "0.2.1" }
+rust-sgx-util = { path = "crates/rust-sgx-util", features = ["with_serde"], version = "0.2.2" }
 anyhow = "1"
 thiserror = "1"
 serde = "1"
@@ -29,7 +29,6 @@ tokio-diesel = "0.3"
 dotenv = "0.9"
 futures = "0.3" 
 getrandom = "0.1"
-rand = "0.7"
 base64 = "0.12"
 ed25519-dalek = "1.0.0-pre.3"
 

@@ -151,37 +151,38 @@ impl IasHandle {
         cert_path: Option<&Path>,
         advisory_path: Option<&Path>,
     ) -> Result<()> {
-        let empty: &[u8] = &[];
-        let nonce = match nonce {
-            Some(nonce) => CString::new(nonce.deref())?,
-            None => CString::new(empty)?,
-        };
-        let report_path = match report_path {
-            Some(path) => path_to_c_string(path)?,
-            None => CString::new(empty)?,
-        };
-        let sig_path = match sig_path {
-            Some(path) => path_to_c_string(path)?,
-            None => CString::new(empty)?,
-        };
-        let cert_path = match cert_path {
-            Some(path) => path_to_c_string(path)?,
-            None => CString::new(empty)?,
-        };
-        let advisory_path = match advisory_path {
-            Some(path) => path_to_c_string(path)?,
-            None => CString::new(empty)?,
-        };
+        let nonce = nonce.map(|nonce| CString::new(nonce.deref())).transpose()?;
+        let report_path = report_path.map(|path| path_to_c_string(path)).transpose()?;
+        let sig_path = sig_path.map(|path| path_to_c_string(path)).transpose()?;
+        let cert_path = cert_path.map(|path| path_to_c_string(path)).transpose()?;
+        let advisory_path = advisory_path
+            .map(|path| path_to_c_string(path))
+            .transpose()?;
         let ret = unsafe {
             c::ias_verify_quote(
                 self.context.as_ptr(),
                 quote.as_ptr() as *const _,
                 quote.len(),
-                nonce.as_ptr(),
-                report_path.as_ptr(),
-                sig_path.as_ptr(),
-                cert_path.as_ptr(),
-                advisory_path.as_ptr(),
+                match &nonce {
+                    Some(nonce) => nonce.as_ptr(),
+                    None => ptr::null(),
+                },
+                match &report_path {
+                    Some(path) => path.as_ptr(),
+                    None => ptr::null(),
+                },
+                match &sig_path {
+                    Some(path) => path.as_ptr(),
+                    None => ptr::null(),
+                },
+                match &cert_path {
+                    Some(path) => path.as_ptr(),
+                    None => ptr::null(),
+                },
+                match &advisory_path {
+                    Some(path) => path.as_ptr(),
+                    None => ptr::null(),
+                }
             )
         };
         if ret == 0 {

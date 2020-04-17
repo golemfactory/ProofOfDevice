@@ -5,7 +5,7 @@ use rust_sgx_util::{Nonce, Quote};
 use serde::Serialize;
 use std::ffi::CString;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use structopt::StructOpt;
 
 #[link(name = "pod_sgx")]

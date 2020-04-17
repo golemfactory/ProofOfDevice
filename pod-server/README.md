@@ -56,21 +56,23 @@ cargo run -- config.toml -v
 
 ### RESTful API
 
-The service strives to communicate with JSON only, hence, if there is an error,
-its description will be communication inside the message's body encoded as JSON.
-
-Example response content:
+The service strives to communicate with JSON only, and the message will have a 
+general structure like below:
 
 ```json
 {
-  "description": "Something went wrong!"
+  "status": "ok",
+  "description": "some message"
 }
 ```
 
+`status` assumes either `ok`, or `error`, and details are encapsulated within
+the `description` field.
+
 #### Available entrypoints:
 
-* GET `/` -- dummy route which will respond with a JSON indicating whether the user
-  is authenticated or not.
+* GET `/` -- dummy route which will respond with `203` if user successfully
+  authenticated, or a `403` with description of the error encoded as JSON.
 
 
 * POST `/register` -- route required to register a new user with the service. The
@@ -89,8 +91,7 @@ Example response content:
 
   Nonce is optional, however both quote and nonce should be base64 encoded.
 
-  Upon successful registration, a `200` message will be generated with empty
-  body.
+  Upon successful registration, a `200` message will be generated.
 
 * GET `/auth` -- route required to initiate challenge-response protocol in order
   to authenticate the registered user using their SGX enclave (which holds a
@@ -102,6 +103,8 @@ Example response content:
 
   ```json
   {
+    "status": "ok",
+    "description": "challenge successfully generated",
     "challenge": "AAAA...AAA"
   }
   ```

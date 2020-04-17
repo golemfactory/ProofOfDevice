@@ -36,9 +36,19 @@ enum QuoteType {
     Unlinkable,
 }
 
+#[cfg(unix)]
 fn path_to_c_string<P: AsRef<Path>>(path: P) -> anyhow::Result<CString> {
     use std::os::unix::ffi::OsStrExt;
     let s = CString::new(path.as_ref().as_os_str().as_bytes())?;
+    Ok(s)
+}
+
+#[cfg(windows)]
+fn path_to_c_string(path: &Path) -> anyhow::Result<CString> {
+    use std::os::windows::ffi::OsStringExt;
+    let utf16: Vec<_> = path.as_os_str().encode_wide().collect();
+    let s = String::from_utf16(utf16)?;
+    let s = CString::new(s.as_bytes())?;
     Ok(s)
 }
 

@@ -1,0 +1,7 @@
+/build
+package-lock.json
+pod_data.sealed
+pod_pubkey
+pod.quote
+*.swp
+src/*.swp

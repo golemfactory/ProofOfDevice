@@ -32,6 +32,7 @@ struct Opt {
 struct ServerConfig {
     api_key: String,
     cookie_key: String,
+    #[serde(rename = "server")]
     bind: Option<BindAddress>,
 }
 

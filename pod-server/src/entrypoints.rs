@@ -14,13 +14,6 @@ use std::env;
 use tokio::task;
 use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
 
-fn pub_key_from_quote(quote: &Quote) -> String {
-    let (start, stop) = (48 + 320, 48 + 320 + 64);
-    let as_bytes = &quote[start..stop];
-    // ED25519 public key is 32 bytes long
-    base64::encode(&as_bytes[..32])
-}
-
 fn verify_quote(quote: &Quote, nonce: Option<&Nonce>) -> Result<(), AppError> {
     // Verify the provided data with IAS.
     let api_key = env::var("POD_SERVER_API_KEY")?;
@@ -66,7 +59,9 @@ pub async fn register(
     task::spawn_blocking(move || verify_quote(&quote, nonce.as_ref())).await??;
 
     // Extract pub_key from Quote
-    let pub_key_ = pub_key_from_quote(&info.quote);
+    // ED25519 public key is 32 bytes long
+    let report_data = info.quote.report_data()?;
+    let pub_key_ = base64::encode(&report_data[..32]);
     log::debug!("Extracted public key (base64 encoded): {:?}", pub_key_);
 
     // Insert user to the database.

@@ -30,6 +30,7 @@ pub use ias::*;
 
 #[cfg(feature = "with_serde")]
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use std::ops::Deref;
 
 /// Convenience wrapper around fallible operation.
@@ -44,6 +45,9 @@ pub enum Error {
     /// `Quote`'s size is too small.
     #[error("quote's size is too small")]
     QuoteTooShort,
+    /// `Nonce` exceeded 32 bytes.
+    #[error("nonce exceeded 32 bytes")]
+    NonceTooLong,
     /// `IasHandle::get_sigrl` returned nonzero return code.
     #[error("get_sigrl returned nonzero return code: {}", _0)]
     IasGetSigrlNonZero(i32),
@@ -140,6 +144,8 @@ impl Deref for Quote {
 /// A thin wrapper around vector of bytes. Represents nonce obtained
 /// from the challenged enclave.
 ///
+/// Nonce cannot be longer than 32 bytes.
+///
 /// # Accessing the underlying bytes buffer
 ///
 /// `Nonce` implements `Deref<Target=[u8]>`, therefore dereferencing it will
@@ -153,9 +159,21 @@ impl Deref for Quote {
 #[cfg_attr(feature = "with_serde", derive(Serialize, Deserialize))]
 pub struct Nonce(#[cfg_attr(feature = "with_serde", serde(with = "ser_de"))] Vec<u8>);
 
-impl From<&[u8]> for Nonce {
-    fn from(bytes: &[u8]) -> Self {
-        Self(bytes.to_vec())
+impl Nonce {
+    fn new<B: Into<Vec<u8>>>(bytes: B) -> Result<Self> {
+        let bytes = bytes.into();
+        if bytes.len() > 32 {
+            return Err(Error::NonceTooLong);
+        }
+        Ok(Self(bytes))
+    }
+}
+
+impl TryFrom<&[u8]> for Nonce {
+    type Error = Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self> {
+        Self::new(bytes)
     }
 }
 

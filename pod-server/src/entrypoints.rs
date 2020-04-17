@@ -6,21 +6,13 @@ use diesel::prelude::*;
 
 use actix_identity::Identity;
 use actix_session::Session;
+use actix_web::error::BlockingError;
 use actix_web::{web, HttpResponse, Responder};
 use rust_sgx_util::{IasHandle, Nonce, Quote};
 use serde::Deserialize;
 use serde_json::json;
 use std::env;
-use tokio::task;
 use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
-
-fn verify_quote(quote: &Quote, nonce: Option<&Nonce>) -> Result<(), AppError> {
-    // Verify the provided data with IAS.
-    let api_key = env::var("POD_SERVER_API_KEY")?;
-    let handle = IasHandle::new(&api_key, None, None)?;
-    handle.verify_quote(quote, nonce, None, None, None, None)?;
-    Ok(())
-}
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterInfo {
@@ -56,7 +48,20 @@ pub async fn register(
 
     let quote = info.quote.clone();
     let nonce = info.nonce.clone();
-    task::spawn_blocking(move || verify_quote(&quote, nonce.as_ref())).await??;
+    if let Err(err) = web::block(move || {
+        // Verify the provided data with IAS.
+        let api_key = env::var("POD_SERVER_API_KEY")?;
+        let handle = IasHandle::new(&api_key, None, None)?;
+        handle.verify_quote(&quote, nonce.as_ref(), None, None, None, None)?;
+        Ok(())
+    })
+    .await
+    {
+        match err {
+            BlockingError::Error(err) => return Err(err),
+            BlockingError::Canceled => return Err(AppError::ActixBlockingCanceled),
+        }
+    };
 
     // Extract pub_key from Quote
     // ED25519 public key is 32 bytes long

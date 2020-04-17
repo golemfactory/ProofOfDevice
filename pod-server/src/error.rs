@@ -27,8 +27,8 @@ pub enum AppError {
     DieselResult(#[from] diesel::result::Error),
     #[error("var not found in env {:?}", _0)]
     Var(#[from] std::env::VarError),
-    #[error("spawning task failed with error: {:?}", _0)]
-    TokioJoin(#[from] tokio::task::JoinError),
+    #[error("blocking operation was canceled prematurely")]
+    ActixBlockingCanceled,
     #[error("decoding base64 to blob: {:?}", _0)]
     Base64Decode(#[from] base64::DecodeError),
     #[error("parsing ed25519 signature: {:?}", _0)]
@@ -52,7 +52,7 @@ impl ResponseError for AppError {
             AppError::R2d2Pool(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::DieselResult(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Var(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::TokioJoin(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::ActixBlockingCanceled => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Base64Decode(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Ed25519Signature(_) => StatusCode::BAD_REQUEST,
             AppError::GetRandom(_) => StatusCode::INTERNAL_SERVER_ERROR,

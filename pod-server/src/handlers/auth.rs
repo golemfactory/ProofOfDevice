@@ -1,4 +1,4 @@
-use super::AppError;
+use super::{AppError, Message};
 use crate::models::User;
 use crate::AppData;
 
@@ -8,12 +8,11 @@ use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
-use serde_json::json;
 use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
 
 pub async fn get(session: Session, identity: Identity) -> impl Responder {
     if let Some(id) = identity.identity() {
-        log::info!("User '{}' already authenticated!", id);
+        log::info!("User '{}' already authenticated", id);
         return Err(AppError::AlreadyAuthenticated);
     }
 
@@ -38,7 +37,11 @@ pub async fn get(session: Session, identity: Identity) -> impl Responder {
         }
     };
 
-    Ok(HttpResponse::Ok().json(json!({ "challenge": challenge })))
+    Ok(HttpResponse::Ok().json(
+        Message::ok()
+            .add_param("description", "challenge successfully generated")
+            .add_param("challenge", challenge),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -92,5 +95,8 @@ pub async fn post(
     identity.remember(response.login.clone());
     session.purge();
 
-    Ok(HttpResponse::Ok())
+    Ok(
+        HttpResponse::Ok()
+            .json(Message::ok().add_param("description", "authentication successful")),
+    )
 }

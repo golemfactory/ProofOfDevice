@@ -1,7 +1,18 @@
+pub mod auth;
+pub mod register;
+
+use actix_identity::Identity;
 use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::StatusCode;
-use actix_web::{HttpResponse, ResponseError};
+use actix_web::{HttpResponse, Responder, ResponseError};
 use serde_json::json;
+
+pub async fn index(identity: Identity) -> impl Responder {
+    match identity.identity() {
+        Some(_) => Ok(HttpResponse::Ok().json(json!({"description": "You are authenticated!"}))),
+        None => Err(AppError::NotAuthenticated),
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -40,12 +51,12 @@ pub enum AppError {
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         let code = match self {
-            AppError::AlreadyRegistered => StatusCode::BAD_REQUEST,
-            AppError::NotRegistered => StatusCode::BAD_REQUEST,
+            AppError::AlreadyRegistered => StatusCode::OK,
+            AppError::NotRegistered => StatusCode::FORBIDDEN,
             AppError::InvalidChallenge => StatusCode::BAD_REQUEST,
             AppError::InvalidCookie => StatusCode::BAD_REQUEST,
-            AppError::NotAuthenticated => StatusCode::UNAUTHORIZED,
-            AppError::AlreadyAuthenticated => StatusCode::BAD_REQUEST,
+            AppError::NotAuthenticated => StatusCode::FORBIDDEN,
+            AppError::AlreadyAuthenticated => StatusCode::OK,
             AppError::TokioDieselAsync(_) => StatusCode::INTERNAL_SERVER_ERROR,
             // TODO map rust-sgx-util errors to status codes
             AppError::RustSgxUtil(_) => StatusCode::BAD_REQUEST,

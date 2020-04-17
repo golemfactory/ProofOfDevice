@@ -1,5 +1,4 @@
-mod entrypoints;
-mod error;
+mod handlers;
 mod models;
 mod schema;
 
@@ -89,12 +88,12 @@ async fn main() -> anyhow::Result<()> {
             ))
             .wrap(middleware::Logger::default())
             .app_data(data.clone())
-            .route("/", web::get().to(entrypoints::index))
-            .route("/register", web::post().to(entrypoints::register))
+            .route("/", web::get().to(handlers::index))
+            .route("/register", web::post().to(handlers::register::post))
             .service(
                 web::resource("/auth")
-                    .route(web::get().to(entrypoints::get_auth))
-                    .route(web::post().to(entrypoints::auth)),
+                    .route(web::get().to(handlers::auth::get))
+                    .route(web::post().to(handlers::auth::post)),
             )
     })
     .bind(address_port)?

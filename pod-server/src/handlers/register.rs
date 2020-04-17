@@ -1,4 +1,4 @@
-use super::AppError;
+use super::{AppError, Message};
 use crate::models::{NewUser, User};
 use crate::AppData;
 
@@ -36,7 +36,7 @@ pub async fn post(info: web::Json<RegisterInfo>, app_data: web::Data<AppData>) -
     log::debug!("Matching user records found: {:?}", result);
 
     if let Some(_) = result {
-        log::info!("User already registered.");
+        log::info!("User '{}' already registered.", info.login);
         return Err(AppError::AlreadyRegistered);
     }
 
@@ -61,7 +61,7 @@ pub async fn post(info: web::Json<RegisterInfo>, app_data: web::Data<AppData>) -
     // ED25519 public key is 32 bytes long
     let report_data = info.quote.report_data()?;
     let pub_key_ = base64::encode(&report_data[..32]);
-    log::debug!("Extracted public key (base64 encoded): {:?}", pub_key_);
+    log::debug!("Extracted public key (base64 encoded): {}", pub_key_);
 
     // Insert user to the database.
     let new_user = NewUser {
@@ -74,6 +74,5 @@ pub async fn post(info: web::Json<RegisterInfo>, app_data: web::Data<AppData>) -
         .await?;
 
     log::info!("User '{}' successfully inserted into db.", info.login);
-
-    Ok(HttpResponse::Ok())
+    Ok(HttpResponse::Ok().json(Message::ok().add_param("description", "registration successful")))
 }

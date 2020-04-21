@@ -9,7 +9,6 @@ struct option g_options[] = {
     { "help", no_argument, 0, 'h' },
     { "sealed-path", required_argument, 0, 's' },
     { "enclave-path", required_argument, 0, 'e' },
-    { "pubkey-path", required_argument, 0, 'p' },
     { "spid", required_argument, 0, 'i' },
     { "quote-type", required_argument, 0, 't' },
     { "quote-path", required_argument, 0, 'q' },
@@ -29,7 +28,6 @@ void usage(const char* exec) {
     printf("  --sealed-path, -s PATH   Path for sealed keys storage, default: " DEFAULT_SEALED_KEYS_PATH "\n");
     printf("  --enclave-path, -e PATH  Path for enclave binary, default: " DEFAULT_ENCLAVE_PATH "\n");
     printf("Available init options:\n");
-    printf("  --pubkey-path, -p PATH   Path to save enclave public key to, default: " DEFAULT_PUBLIC_KEY_PATH "\n");
     printf("  --spid, -i SPID          Service Provider ID received during IAS registration (hex string)\n");
     printf("  --quote-type, -t TYPE    Service Provider quote type, (l)inkable or (u)nlinkable)\n");
     printf("  --quote-path, -q PATH    Path to save enclave quote to, default: " DEFAULT_ENCLAVE_QUOTE_PATH "\n");
@@ -43,7 +41,6 @@ int main(int argc, char* argv[]) {
     char* sp_id = NULL;
     char* sp_quote_type = NULL;
     char* sealed_keys_path = DEFAULT_SEALED_KEYS_PATH;
-    char* public_key_path = DEFAULT_PUBLIC_KEY_PATH;
     char* enclave_path = DEFAULT_ENCLAVE_PATH;
     char* quote_path = DEFAULT_ENCLAVE_QUOTE_PATH;
     char* data_path = NULL;
@@ -66,9 +63,6 @@ int main(int argc, char* argv[]) {
                 break;
             case 'e':
                 enclave_path = optarg;
-                break;
-            case 'p':
-                public_key_path = optarg;
                 break;
             case 'i':
                 sp_id = optarg;
@@ -114,8 +108,7 @@ int main(int argc, char* argv[]) {
                 goto out;
             }
 
-            ret = pod_init_enclave(enclave_path, sp_id, sp_quote_type, sealed_keys_path,
-                                   public_key_path, quote_path);
+            ret = pod_init_enclave(enclave_path, sp_id, sp_quote_type, sealed_keys_path, quote_path);
             if (ret < 0)
                 goto out;
 

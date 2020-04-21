@@ -46,14 +46,12 @@ int write_file(const char* path, size_t size, const void* buffer);
  *  \param[in] sp_id_str           Service Provider ID (hex string).
  *  \param[in] sp_quote_type_str   Quote type as string ("linkable"/"unlinkable").
  *  \param[in] sealed_state_path   Path to sealed enclave state (will be overwritten).
- *  \param[in] enclave_pubkey_path Path where enclave public key will be saved.
  *  \param[in] quote_path          Path where enclave SGX quote will be saved.
  *
  *  \return 0 on success, negative on error.
  */
 int pod_init_enclave(const char* enclave_path, const char* sp_id_str, const char* sp_quote_type_str,
-                     const char* sealed_state_path, const char* enclave_pubkey_path,
-                     const char* quote_path);
+                     const char* sealed_state_path, const char* quote_path);
 
 /*!
  *  \brief Load PoD enclave and restore its private key from sealed state.

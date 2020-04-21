@@ -5,7 +5,7 @@ use rust_sgx_util::{Nonce, Quote};
 use serde::Serialize;
 use std::ffi::CString;
 use std::path::Path;
-use std::{fs, io, ptr};
+use std::{fs, io};
 use structopt::StructOpt;
 
 #[link(name = "pod_sgx")]
@@ -15,7 +15,6 @@ extern "C" {
         sp_id_str: *const libc::c_char,
         sp_quote_type_str: *const libc::c_char,
         sealed_state_path: *const libc::c_char,
-        enclave_pubkey_path: *const libc::c_char,
         quote_path: *const libc::c_char,
     ) -> libc::c_int;
     fn pod_load_enclave(
@@ -74,7 +73,6 @@ fn init_enclave<P: AsRef<Path>>(
             spid.as_ptr(),
             quote_type.as_ptr(),
             sealed_state_path.as_ptr(),
-            ptr::null(),
             quote_path.as_ptr(),
         )
     };

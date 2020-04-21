@@ -130,8 +130,8 @@ static sgx_enclave_id_t g_enclave_id = 0;
 static const char* g_sealed_state_path = NULL;
 
 static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
-                            const char* sealed_state_path, bool load_sealed_state,
-                            const char* public_key_path) {
+                            const char* sealed_state_path, bool load_sealed_state) {
+                            
     int ret = -1;
     uint8_t* sealed_keys = NULL;
 
@@ -155,15 +155,8 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
             goto out;
     }
 
-    uint8_t enclave_public_key[EC_PUBLIC_KEY_SIZE];
     // ECALL: enclave initialization
-    sgx_status_t sgx_ret;
-    if (public_key_path) {
-        sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size, enclave_public_key,
-                               EC_PUBLIC_KEY_SIZE);
-    } else {
-        sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size, NULL, 0);
-    }
+    sgx_status_t sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size, NULL, 0);
 
     if (sgx_ret != SGX_SUCCESS) {
         fprintf(stderr, "Failed to call enclave initialization\n");
@@ -175,12 +168,7 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
         goto out;
     }
 
-    if (public_key_path) {
-        printf("Saving public enclave key to '%s'\n", public_key_path);
-        ret = write_file(public_key_path, EC_PUBLIC_KEY_SIZE, &enclave_public_key);
-    } else {
-        ret = 0;
-    }
+    ret = 0;
 out:
     free(sealed_keys);
     return ret;
@@ -301,16 +289,14 @@ out:
 }
 
 int pod_init_enclave(const char* enclave_path, const char* sp_id_str, const char* sp_quote_type_str,
-                     const char* sealed_state_path, const char* enclave_pubkey_path,
-                     const char* quote_path) {
+                     const char* sealed_state_path, const char* quote_path) {
     sgx_spid_t sp_id = { 0 };
     sgx_quote_sign_type_t sp_quote_type;
 
     int ret = load_pod_enclave(enclave_path,
                                ENCLAVE_DEBUG_ENABLED,
                                sealed_state_path,
-                               false, // overwrite existing sealed state
-                               enclave_pubkey_path); // export public key
+                               false); // overwrite existing sealed state
     if (ret < 0)
         goto out;
 
@@ -349,8 +335,7 @@ int pod_load_enclave(const char* enclave_path, const char* sealed_state_path) {
     return load_pod_enclave(enclave_path,
                             ENCLAVE_DEBUG_ENABLED,
                             sealed_state_path,
-                            true, // load existing sealed state
-                            NULL); // don't export public key
+                            true); // load existing sealed state
 }
 
 int pod_unload_enclave(void) {

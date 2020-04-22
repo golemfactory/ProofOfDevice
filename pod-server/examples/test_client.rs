@@ -5,22 +5,26 @@ use rust_sgx_util::{Nonce, Quote};
 use serde::Serialize;
 use std::convert::TryFrom;
 use std::ffi::CString;
+use std::fs;
 use std::path::Path;
 use structopt::StructOpt;
 
 const SEALED_KEYS_PATH: &str = "pod_data.sealed";
 const ENCLAVE_PATH: &str = "../pod-client/pod_enclave/pod_enclave.signed.so";
 const MAX_QUOTE_SIZE: usize = 2048;
+const MAX_SEALED_KEYS_SIZE: usize = 4096;
 
 #[link(name = "pod_sgx")]
 extern "C" {
     fn pod_init_enclave(
         enclave_path: *const libc::c_char,
-        sealed_state_path: *const libc::c_char,
+        sealed_keys: *mut u8,
+        sealed_keys_size: usize,
     ) -> libc::c_int;
     fn pod_load_enclave(
         enclave_path: *const libc::c_char,
-        sealed_state_path: *const libc::c_char,
+        sealed_keys: *const u8,
+        sealed_keys_size: usize,
     ) -> libc::c_int;
     fn pod_unload_enclave() -> libc::c_int;
     fn pod_get_quote(
@@ -59,19 +63,26 @@ fn path_to_c_string(path: &Path) -> anyhow::Result<CString> {
     Ok(s)
 }
 
-fn init_enclave<P: AsRef<Path>>(enclave_path: P, sealed_state_path: P) -> anyhow::Result<()> {
+fn init_enclave<P: AsRef<Path>>(enclave_path: P) -> anyhow::Result<Vec<u8>> {
     let enclave_path = path_to_c_string(enclave_path)?;
-    let sealed_state_path = path_to_c_string(sealed_state_path)?;
-    let ret = unsafe { pod_init_enclave(enclave_path.as_ptr(), sealed_state_path.as_ptr()) };
+    let sealed_keys_buffer = &mut [0u8; MAX_SEALED_KEYS_SIZE];
+    let ret = unsafe {
+        pod_init_enclave(
+            enclave_path.as_ptr(),
+            sealed_keys_buffer.as_mut_ptr(),
+            sealed_keys_buffer.len(),
+        )
+    };
 
     if ret < 0 {
-        Err(anyhow!(
+        return Err(anyhow!(
             "pod_init_enclave returned non-zero exit code: {}",
             ret
-        ))
-    } else {
-        Ok(())
+        ));
     }
+
+    let sealed_keys_size = usize::try_from(ret)?;
+    Ok(Vec::from(&sealed_keys_buffer[..sealed_keys_size]))
 }
 
 fn get_quote(spid: &str, quote_type: QuoteType) -> anyhow::Result<Quote> {
@@ -100,11 +111,20 @@ fn get_quote(spid: &str, quote_type: QuoteType) -> anyhow::Result<Quote> {
     Ok(Quote::from(&quote_buffer[..quote_size]))
 }
 
-fn load_enclave<P: AsRef<Path>>(enclave_path: P, sealed_state_path: P) -> anyhow::Result<()> {
+fn load_enclave<P: AsRef<Path>, B: AsRef<[u8]>>(
+    enclave_path: P,
+    sealed_keys: B,
+) -> anyhow::Result<()> {
     let enclave_path = path_to_c_string(enclave_path)?;
-    let sealed_state_path = path_to_c_string(sealed_state_path)?;
-    let ret = unsafe { pod_load_enclave(enclave_path.as_ptr(), sealed_state_path.as_ptr()) };
-    if ret != 0 {
+    let sealed_keys = sealed_keys.as_ref();
+    let ret = unsafe {
+        pod_load_enclave(
+            enclave_path.as_ptr(),
+            sealed_keys.as_ptr(),
+            sealed_keys.len(),
+        )
+    };
+    if ret < 0 {
         Err(anyhow!(
             "pod_load_enclave returned non-zero exit code: {}",
             ret
@@ -194,17 +214,27 @@ async fn main() -> anyhow::Result<()> {
     let port = opt.port.unwrap_or(8080);
     let base_uri = format!("http://{}:{}", address, port);
     let client = Client::default();
+    let sealed_keys_path = Path::new(SEALED_KEYS_PATH);
 
-    if !Path::new(SEALED_KEYS_PATH).exists() {
+    let sealed_keys = if !sealed_keys_path.exists() {
+        println!("Initializing enclave for the first time");
         // Initialize enclave for the first time
-        init_enclave(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
+        let sealed_keys = init_enclave(ENCLAVE_PATH)?;
         unload_enclave()?;
-    }
+        // Save state to file
+        fs::write(sealed_keys_path, &sealed_keys)?;
+        sealed_keys
+    } else {
+        println!("Loading sealed state from '{}'", sealed_keys_path.display());
+        // Load state from file
+        let sealed_keys = fs::read(sealed_keys_path)?;
+        sealed_keys
+    };
 
     match opt.cmd {
         Command::Register { login, spid } => {
             // Get the quote
-            load_enclave(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
+            load_enclave(ENCLAVE_PATH, sealed_keys)?;
             let quote = get_quote(&spid, QuoteType::Unlinkable)?;
             unload_enclave()?;
 
@@ -253,7 +283,7 @@ async fn main() -> anyhow::Result<()> {
             println!("    | body: {}", json);
 
             // Process challenge
-            load_enclave(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
+            load_enclave(ENCLAVE_PATH, sealed_keys)?;
             let challenge = json["challenge"]
                 .as_str()
                 .ok_or(anyhow!("invalid String for challenge"))?;

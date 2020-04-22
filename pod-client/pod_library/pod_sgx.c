@@ -127,10 +127,11 @@ static sgx_status_t enclave_unload(sgx_enclave_id_t enclave_id) {
 }
 
 static sgx_enclave_id_t g_enclave_id = 0;
-static const char* g_sealed_state_path = NULL;
+static uint8_t* g_sealed_state = NULL;
+static size_t g_sealed_state_size = 0;
 
 static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
-                            const char* sealed_state_path, bool load_sealed_state) {
+                            uint8_t* sealed_state, size_t sealed_state_size, bool load_sealed_state) {
                             
     int ret = -1;
     uint8_t* sealed_keys = NULL;
@@ -140,7 +141,8 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
         goto out;
     }
 
-    g_sealed_state_path = sealed_state_path;
+    g_sealed_state = sealed_state;
+    g_sealed_state_size = sealed_state_size;
 
     g_enclave_id = enclave_load(enclave_path, debug_enabled);
     if (g_enclave_id == 0)
@@ -149,10 +151,9 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
     size_t sealed_size = 0;
 
     if (load_sealed_state) {
-        printf("Loading sealed enclave state from '%s'\n", sealed_state_path);
-        sealed_keys = read_file(NULL, sealed_state_path, &sealed_size); // may return NULL
-        if (sealed_keys == NULL)
-            goto out;
+        printf("Loading sealed enclave state from provided buffer\n");
+        sealed_keys = sealed_state;
+        sealed_size = sealed_state_size;
     }
 
     // ECALL: enclave initialization
@@ -168,9 +169,10 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
         goto out;
     }
 
-    ret = 0;
+    ret = g_sealed_state_size;
 out:
-    free(sealed_keys);
+    if (!load_sealed_state)
+        free(sealed_keys);
     return ret;
 }
 
@@ -281,11 +283,29 @@ out:
     return ret;
 }
 
-int pod_init_enclave(const char* enclave_path, const char* sealed_state_path) {
+int pod_init_enclave(const char* enclave_path, uint8_t* sealed_state, size_t sealed_state_size) {
     return load_pod_enclave(enclave_path,
                             ENCLAVE_DEBUG_ENABLED,
-                            sealed_state_path,
+                            sealed_state,
+                            sealed_state_size,
                             false); // overwrite existing sealed state
+}
+
+int pod_load_enclave(const char* enclave_path, const uint8_t* sealed_state, size_t sealed_state_size) {
+    return load_pod_enclave(enclave_path,
+                            ENCLAVE_DEBUG_ENABLED,
+                            sealed_state,
+                            sealed_state_size,
+                            true); // load existing sealed state
+}
+
+int pod_unload_enclave(void) {
+    if (g_enclave_id == 0)
+        return 0;
+    int ret = enclave_unload(g_enclave_id);
+    if (ret == 0)
+        g_enclave_id = 0;
+    return ret;
 }
 
 int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t* quote_buffer,
@@ -321,22 +341,6 @@ int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t*
 
     ret = generate_enclave_quote(sp_id, sp_quote_type, quote_buffer, quote_buffer_size);
 out:
-    return ret;
-}
-
-int pod_load_enclave(const char* enclave_path, const char* sealed_state_path) {
-    return load_pod_enclave(enclave_path,
-                            ENCLAVE_DEBUG_ENABLED,
-                            sealed_state_path,
-                            true); // load existing sealed state
-}
-
-int pod_unload_enclave(void) {
-    if (g_enclave_id == 0)
-        return 0;
-    int ret = enclave_unload(g_enclave_id);
-    if (ret == 0)
-        g_enclave_id = 0;
     return ret;
 }
 
@@ -402,8 +406,16 @@ out:
 
 // OCALL: save sealed enclave state
 int o_store_sealed_data(const uint8_t* sealed_data, size_t sealed_size) {
-    printf("Saving sealed enclave state to '%s'\n", g_sealed_state_path);
-    return write_file(g_sealed_state_path, sealed_size, sealed_data);
+    printf("Saving sealed enclave state to provided buffer\n");
+
+    if (g_sealed_state_size < sealed_size) {
+      printf("Provided buffer is too small to fit required size: %ld\n", sealed_size);
+      return -1;
+    }
+
+    memcpy(g_sealed_state, sealed_data, sealed_size);
+    g_sealed_state_size = sealed_size;
+    return 0;
 }
 
 // OCALL: print string

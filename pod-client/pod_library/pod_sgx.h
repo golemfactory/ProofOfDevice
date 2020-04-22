@@ -50,7 +50,7 @@ int write_file(const char* path, size_t size, const void* buffer);
  *
  *  \return 0 on success, negative on error.
  */
-int pod_init_enclave(const char* enclave_path, const char* sealed_state_path);
+int pod_init_enclave(const char* enclave_path, uint8_t* sealed_state, size_t sealed_state_size);
 
 int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t* quote_buffer,
                   size_t quote_buffer_size);
@@ -63,7 +63,7 @@ int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t*
  *
  *  \return 0 on success, negative on error.
  */
-int pod_load_enclave(const char* enclave_path, const char* sealed_state_path);
+int pod_load_enclave(const char* enclave_path, const uint8_t* sealed_state, size_t sealed_state_size);
 
 /*!
  *  \brief Unload PoD enclave.

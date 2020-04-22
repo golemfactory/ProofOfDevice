@@ -109,13 +109,20 @@ int main(int argc, char* argv[]) {
                 goto out;
             }
 
-            ret = pod_init_enclave(enclave_path, sealed_keys_path);
+            uint8_t sealed_keys[MAX_SEALED_STATE_SIZE] = { 0 };
+            ret = pod_init_enclave(enclave_path, sealed_keys, MAX_SEALED_STATE_SIZE);
+            if (ret < 0)
+                goto out;
+
+            // save sealed state to file
+            size_t sealed_keys_size = ret;
+            ret = write_file(sealed_keys_path, sealed_keys_size, sealed_keys);
             if (ret < 0)
                 goto out;
 
             // get quote
             uint8_t quote[MAX_QUOTE_SIZE] = { 0 };
-            ret = pod_get_quote(enclave_path, sp_id, sp_quote_type, sealed_keys_path, quote, MAX_QUOTE_SIZE);
+            ret = pod_get_quote(sp_id, sp_quote_type, quote, MAX_QUOTE_SIZE);
             if (ret < 0)
                 goto out;
 
@@ -142,7 +149,15 @@ int main(int argc, char* argv[]) {
                 goto out;
             }
 
-            ret = pod_load_enclave(enclave_path, sealed_keys_path);
+            // load sealed state from file
+            uint8_t sealed_keys[MAX_SEALED_STATE_SIZE] = { 0 };
+            size_t sealed_keys_size = 0;
+            if (read_file(sealed_keys, sealed_keys_path, &sealed_keys_size) == NULL) {
+              ret = -1;
+              goto out;
+            }
+
+            ret = pod_load_enclave(enclave_path, sealed_keys, sealed_keys_size);
             if (ret < 0)
                 goto out;
 

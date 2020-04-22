@@ -13,6 +13,9 @@
 /** Maximum quote size. */
 #define MAX_QUOTE_SIZE 2048
 
+/** Maximum sealed state size. */
+#define MAX_SEALED_STATE_SIZE 4096
+
 /** Enables enclave debugging and NULLIFIES ENCLAVE MEMORY PROTECTION. */
 #define ENCLAVE_DEBUG_ENABLED 1
 

@@ -109,8 +109,13 @@ int main(int argc, char* argv[]) {
                 goto out;
             }
 
+            ret = pod_init_enclave(enclave_path, sealed_keys_path);
+            if (ret < 0)
+                goto out;
+
+            // get quote
             uint8_t quote[MAX_QUOTE_SIZE] = { 0 };
-            ret = pod_init_enclave(enclave_path, sp_id, sp_quote_type, sealed_keys_path, quote, MAX_QUOTE_SIZE);
+            ret = pod_get_quote(enclave_path, sp_id, sp_quote_type, sealed_keys_path, quote, MAX_QUOTE_SIZE);
             if (ret < 0)
                 goto out;
 

@@ -3,10 +3,14 @@ use actix_web::HttpMessage;
 use anyhow::anyhow;
 use rust_sgx_util::{Nonce, Quote};
 use serde::Serialize;
+use std::convert::TryFrom;
 use std::ffi::CString;
 use std::path::Path;
-use std::{fs, io};
 use structopt::StructOpt;
+
+const SEALED_KEYS_PATH: &str = "pod_data.sealed";
+const ENCLAVE_PATH: &str = "../pod-client/pod_enclave/pod_enclave.signed.so";
+const MAX_QUOTE_SIZE: usize = 2048;
 
 #[link(name = "pod_sgx")]
 extern "C" {
@@ -15,7 +19,8 @@ extern "C" {
         sp_id_str: *const libc::c_char,
         sp_quote_type_str: *const libc::c_char,
         sealed_state_path: *const libc::c_char,
-        quote_path: *const libc::c_char,
+        quote_buffer: *mut u8,
+        quote_buffer_size: usize,
     ) -> libc::c_int;
     fn pod_load_enclave(
         enclave_path: *const libc::c_char,
@@ -57,8 +62,7 @@ fn init_enclave<P: AsRef<Path>>(
     spid: &str,
     quote_type: QuoteType,
     sealed_state_path: P,
-    quote_path: P,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Quote> {
     let enclave_path = path_to_c_string(enclave_path)?;
     let spid = CString::new(spid)?;
     let quote_type = match quote_type {
@@ -66,24 +70,26 @@ fn init_enclave<P: AsRef<Path>>(
         QuoteType::Unlinkable => CString::new("u")?,
     };
     let sealed_state_path = path_to_c_string(sealed_state_path)?;
-    let quote_path = path_to_c_string(quote_path)?;
+    let quote_buffer = &mut [0u8; MAX_QUOTE_SIZE];
     let ret = unsafe {
         pod_init_enclave(
             enclave_path.as_ptr(),
             spid.as_ptr(),
             quote_type.as_ptr(),
             sealed_state_path.as_ptr(),
-            quote_path.as_ptr(),
+            quote_buffer.as_mut_ptr(),
+            MAX_QUOTE_SIZE,
         )
     };
-    if ret != 0 {
-        Err(anyhow!(
+
+    if ret < 0 {
+        return Err(anyhow!(
             "pod_init_enclave returned non-zero exit code: {}",
             ret
-        ))
-    } else {
-        Ok(())
+        ));
     }
+    let quote_size = usize::try_from(ret)?;
+    Ok(Quote::from(&quote_buffer[..quote_size]))
 }
 
 fn load_enclave<P: AsRef<Path>>(enclave_path: P, sealed_state_path: P) -> anyhow::Result<()> {
@@ -172,24 +178,6 @@ struct ChallengeResponse {
     response: String,
 }
 
-static SEALED_KEYS_PATH: &str = "pod_data.sealed";
-static ENCLAVE_PATH: &str = "../pod-client/pod_enclave/pod_enclave.signed.so";
-static ENCLAVE_QUOTE_PATH: &str = "pod.quote";
-
-fn generate_quote(spid: &str) -> anyhow::Result<Quote> {
-    // Initialize enclave for the first time
-    init_enclave(
-        ENCLAVE_PATH,
-        &spid,
-        QuoteType::Unlinkable,
-        SEALED_KEYS_PATH,
-        ENCLAVE_QUOTE_PATH,
-    )?;
-    unload_enclave()?;
-    let bytes = fs::read(ENCLAVE_QUOTE_PATH)?;
-    Ok(Quote::from(bytes))
-}
-
 #[actix_rt::main]
 async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
@@ -201,17 +189,9 @@ async fn main() -> anyhow::Result<()> {
 
     match opt.cmd {
         Command::Register { login, spid } => {
-            // Get quote
-            let quote = match fs::read(ENCLAVE_QUOTE_PATH) {
-                Ok(bytes) => Quote::from(bytes),
-                Err(err) => {
-                    if err.kind() == io::ErrorKind::NotFound {
-                        generate_quote(&spid)?
-                    } else {
-                        return Err(err.into());
-                    }
-                }
-            };
+            // Initialize enclave for the first time and get the quote
+            let quote = init_enclave(ENCLAVE_PATH, &spid, QuoteType::Unlinkable, SEALED_KEYS_PATH)?;
+            unload_enclave()?;
 
             println!("POST /register");
             let mut response = client

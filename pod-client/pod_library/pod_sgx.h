@@ -51,7 +51,7 @@ int write_file(const char* path, size_t size, const void* buffer);
  *  \return 0 on success, negative on error.
  */
 int pod_init_enclave(const char* enclave_path, const char* sp_id_str, const char* sp_quote_type_str,
-                     const char* sealed_state_path, const char* quote_path);
+                     const char* sealed_state_path, uint8_t* quote_buffer, size_t quote_buffer_size);
 
 /*!
  *  \brief Load PoD enclave and restore its private key from sealed state.

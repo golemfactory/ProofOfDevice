@@ -281,19 +281,19 @@ out:
     return ret;
 }
 
-int pod_init_enclave(const char* enclave_path, const char* sp_id_str, const char* sp_quote_type_str,
-                     const char* sealed_state_path, uint8_t* quote_buffer, size_t quote_buffer_size) {
+int pod_init_enclave(const char* enclave_path, const char* sealed_state_path) {
+    return load_pod_enclave(enclave_path,
+                            ENCLAVE_DEBUG_ENABLED,
+                            sealed_state_path,
+                            false); // overwrite existing sealed state
+}
+
+int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t* quote_buffer,
+                  size_t quote_buffer_size) {
     sgx_spid_t sp_id = { 0 };
     sgx_quote_sign_type_t sp_quote_type;
+    int ret = -1;
 
-    int ret = load_pod_enclave(enclave_path,
-                               ENCLAVE_DEBUG_ENABLED,
-                               sealed_state_path,
-                               false); // overwrite existing sealed state
-    if (ret < 0)
-        goto out;
-
-    ret = -1;
     // parse SPID
     if (strlen(sp_id_str) != 32) {
         fprintf(stderr, "Invalid SPID: %s\n", sp_id_str);

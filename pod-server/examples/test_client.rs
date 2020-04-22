@@ -16,17 +16,19 @@ const MAX_QUOTE_SIZE: usize = 2048;
 extern "C" {
     fn pod_init_enclave(
         enclave_path: *const libc::c_char,
-        sp_id_str: *const libc::c_char,
-        sp_quote_type_str: *const libc::c_char,
         sealed_state_path: *const libc::c_char,
-        quote_buffer: *mut u8,
-        quote_buffer_size: usize,
     ) -> libc::c_int;
     fn pod_load_enclave(
         enclave_path: *const libc::c_char,
         sealed_state_path: *const libc::c_char,
     ) -> libc::c_int;
     fn pod_unload_enclave() -> libc::c_int;
+    fn pod_get_quote(
+        sp_id_str: *const libc::c_char,
+        sp_quote_type_str: *const libc::c_char,
+        quote_buffer: *mut u8,
+        quote_buffer_size: usize,
+    ) -> libc::c_int;
     fn pod_sign_buffer(
         data: *const libc::c_void,
         data_size: usize,
@@ -57,26 +59,32 @@ fn path_to_c_string(path: &Path) -> anyhow::Result<CString> {
     Ok(s)
 }
 
-fn init_enclave<P: AsRef<Path>>(
-    enclave_path: P,
-    spid: &str,
-    quote_type: QuoteType,
-    sealed_state_path: P,
-) -> anyhow::Result<Quote> {
+fn init_enclave<P: AsRef<Path>>(enclave_path: P, sealed_state_path: P) -> anyhow::Result<()> {
     let enclave_path = path_to_c_string(enclave_path)?;
+    let sealed_state_path = path_to_c_string(sealed_state_path)?;
+    let ret = unsafe { pod_init_enclave(enclave_path.as_ptr(), sealed_state_path.as_ptr()) };
+
+    if ret < 0 {
+        Err(anyhow!(
+            "pod_init_enclave returned non-zero exit code: {}",
+            ret
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn get_quote(spid: &str, quote_type: QuoteType) -> anyhow::Result<Quote> {
     let spid = CString::new(spid)?;
     let quote_type = match quote_type {
         QuoteType::Linkable => CString::new("l")?,
         QuoteType::Unlinkable => CString::new("u")?,
     };
-    let sealed_state_path = path_to_c_string(sealed_state_path)?;
     let quote_buffer = &mut [0u8; MAX_QUOTE_SIZE];
     let ret = unsafe {
-        pod_init_enclave(
-            enclave_path.as_ptr(),
+        pod_get_quote(
             spid.as_ptr(),
             quote_type.as_ptr(),
-            sealed_state_path.as_ptr(),
             quote_buffer.as_mut_ptr(),
             MAX_QUOTE_SIZE,
         )
@@ -118,7 +126,7 @@ fn unload_enclave() -> anyhow::Result<()> {
     }
 }
 
-fn sign_with_enclave(message: &[u8], signature: &mut [u8]) -> anyhow::Result<()> {
+fn sign_buffer(message: &[u8], signature: &mut [u8]) -> anyhow::Result<()> {
     let ret = unsafe {
         pod_sign_buffer(
             message.as_ptr() as *const _,
@@ -187,10 +195,17 @@ async fn main() -> anyhow::Result<()> {
     let base_uri = format!("http://{}:{}", address, port);
     let client = Client::default();
 
+    if !Path::new(SEALED_KEYS_PATH).exists() {
+        // Initialize enclave for the first time
+        init_enclave(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
+        unload_enclave()?;
+    }
+
     match opt.cmd {
         Command::Register { login, spid } => {
-            // Initialize enclave for the first time and get the quote
-            let quote = init_enclave(ENCLAVE_PATH, &spid, QuoteType::Unlinkable, SEALED_KEYS_PATH)?;
+            // Get the quote
+            load_enclave(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
+            let quote = get_quote(&spid, QuoteType::Unlinkable)?;
             unload_enclave()?;
 
             println!("POST /register");
@@ -244,7 +259,7 @@ async fn main() -> anyhow::Result<()> {
                 .ok_or(anyhow!("invalid String for challenge"))?;
             let challenge = base64::decode(challenge)?;
             let response = &mut [0u8; 64];
-            sign_with_enclave(&challenge, response)?;
+            sign_buffer(&challenge, response)?;
             let response = base64::encode(&response[..]);
             unload_enclave()?;
 

@@ -175,7 +175,7 @@ out:
 }
 
 static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_type,
-                                  const char* quote_path) {
+                                  uint8_t* quote_buffer, size_t quote_buffer_size) {
     int ret = -1;
     sgx_status_t sgx_ret = SGX_ERROR_UNEXPECTED;
     sgx_epid_group_id_t epid_group_id = { 0 };
@@ -184,7 +184,7 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
     sgx_quote_nonce_t qe_nonce = { 0 };
     sgx_report_t qe_report = { 0 };
     uint32_t quote_size = 0;
-    sgx_quote_t* quote = NULL;
+    sgx_quote_t* quote = (sgx_quote_t*) quote_buffer;
 
     if (g_enclave_id == 0) {
         fprintf(stderr, "Enclave not loaded\n");
@@ -206,9 +206,9 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
         goto out;
     }
 
-    quote = malloc(quote_size);
-    if (!quote) {
-        fprintf(stderr, "No memory\n");
+    if (quote_buffer_size < quote_size) {
+        fprintf(stderr, "Provided buffer size is too small to fit the quote of size %d\n", quote_size);
+        ret = -1;
         goto out;
     }
 
@@ -276,20 +276,13 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
         goto out;
     }
 
-    if (write_file(quote_path, quote_size, quote) == 0) {
-        printf("Enclave quote saved to '%s'\n", quote_path);
-    } else {
-        goto out;
-    }
-
-    ret = 0;
+    ret = quote_size;
 out:
-    free(quote);
     return ret;
 }
 
 int pod_init_enclave(const char* enclave_path, const char* sp_id_str, const char* sp_quote_type_str,
-                     const char* sealed_state_path, const char* quote_path) {
+                     const char* sealed_state_path, uint8_t* quote_buffer, size_t quote_buffer_size) {
     sgx_spid_t sp_id = { 0 };
     sgx_quote_sign_type_t sp_quote_type;
 
@@ -326,7 +319,7 @@ int pod_init_enclave(const char* enclave_path, const char* sp_id_str, const char
         goto out;
     }
 
-    ret = generate_enclave_quote(sp_id, sp_quote_type, quote_path);
+    ret = generate_enclave_quote(sp_id, sp_quote_type, quote_buffer, quote_buffer_size);
 out:
     return ret;
 }

@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include "pod_app.h"
 #include "pod_sgx.h"
@@ -108,7 +109,14 @@ int main(int argc, char* argv[]) {
                 goto out;
             }
 
-            ret = pod_init_enclave(enclave_path, sp_id, sp_quote_type, sealed_keys_path, quote_path);
+            uint8_t quote[MAX_QUOTE_SIZE] = { 0 };
+            ret = pod_init_enclave(enclave_path, sp_id, sp_quote_type, sealed_keys_path, quote, MAX_QUOTE_SIZE);
+            if (ret < 0)
+                goto out;
+
+            // save quote to file
+            size_t quote_size = ret;
+            ret = write_file(quote_path, quote_size, quote);
             if (ret < 0)
                 goto out;
 

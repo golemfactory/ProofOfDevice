@@ -10,6 +10,9 @@
 /** Default file name to save enclave quote to. */
 #define DEFAULT_ENCLAVE_QUOTE_PATH "pod.quote"
 
+/** Maximum quote size. */
+#define MAX_QUOTE_SIZE 2048
+
 /** Enables enclave debugging and NULLIFIES ENCLAVE MEMORY PROTECTION. */
 #define ENCLAVE_DEBUG_ENABLED 1
 

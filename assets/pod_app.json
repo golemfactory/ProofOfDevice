@@ -1,0 +1,8 @@
+{
+  "name": "pod_app",
+  "description": "Proof-of-device native client",
+  "path": "<path_to_app>/pod_app",
+  "type": "stdio",
+  "allowed_extensions": [ "pod_app@golem.network" ],
+  "allowed_origins": [ "pod_app@golem.network" ]
+}

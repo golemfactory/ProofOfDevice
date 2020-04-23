@@ -14,7 +14,7 @@ actix-web = "2"
 actix-rt = "1"
 actix-session = "0.3"
 actix-identity = "0.2"
-rust-sgx-util = { path = "crates/rust-sgx-util", features = ["with_serde"], version = "0.2.3" }
+rust-sgx-util = { path = "../rust-sgx-util", features = ["with_serde"], version = "0.2.3" }
 anyhow = "1"
 thiserror = "1"
 serde = "1"
@@ -31,9 +31,7 @@ base64 = "0.12"
 ed25519-dalek = "1.0.0-pre.3"
 
 [dev-dependencies]
-libc = "0.2"
+pod-api = { path = "../api", version = "0.1.0" }
 
 [badges]
 maintenance = { status = "actively-developed" }
-
-[workspace]

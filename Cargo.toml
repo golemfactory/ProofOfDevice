@@ -1,0 +1,17 @@
+[package]
+name = "pod-app"
+version = "0.1.0"
+authors = ["Jakub Konka <jakub.konka@golem.network>"]
+edition = "2018"
+
+[dependencies]
+pod-api = { path = "crates/api", version = "0.1.0" }
+rust-sgx-util = { path = "crates/rust-sgx-util", version = "0.2.3" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[workspace]
+members = [ "crates/server" ]

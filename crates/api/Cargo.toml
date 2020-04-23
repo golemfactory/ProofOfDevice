@@ -1,0 +1,13 @@
+[package]
+name = "pod-api"
+version = "0.1.0"
+authors = ["Jakub Konka <jakub.konka@golem.network>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1"
+libc = "0.2"
+rust-sgx-util = { path = "../rust-sgx-util", version = "0.2.3"}
+
+[badges]
+maintenance = { status = "actively-developed" }

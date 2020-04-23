@@ -173,6 +173,7 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
 out:
     if (!load_sealed_state)
         free(sealed_keys);
+
     return ret;
 }
 
@@ -186,7 +187,6 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
     sgx_quote_nonce_t qe_nonce = { 0 };
     sgx_report_t qe_report = { 0 };
     uint32_t quote_size = 0;
-    sgx_quote_t* quote = (sgx_quote_t*) quote_buffer;
 
     if (g_enclave_id == 0) {
         fprintf(stderr, "Enclave not loaded\n");
@@ -239,7 +239,7 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
                             NULL, // no revocation list
                             0, // revocation list size
                             &qe_report, // optional QE report
-                            quote,
+                            (sgx_quote_t*) quote_buffer,
                             quote_size);
 
     if (sgx_ret != SGX_SUCCESS) {
@@ -263,7 +263,7 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
         goto out;
     }
 
-    if (SHA256_Update(&sha, quote, quote_size) != 1) {
+    if (SHA256_Update(&sha, (sgx_quote_t*) quote_buffer, quote_size) != 1) {
         fprintf(stderr, "Failed to calculate hash\n");
         goto out;
     }
@@ -294,7 +294,7 @@ int pod_init_enclave(const char* enclave_path, uint8_t* sealed_state, size_t sea
 int pod_load_enclave(const char* enclave_path, const uint8_t* sealed_state, size_t sealed_state_size) {
     return load_pod_enclave(enclave_path,
                             ENCLAVE_DEBUG_ENABLED,
-                            sealed_state,
+                            (uint8_t*) sealed_state,
                             sealed_state_size,
                             true); // load existing sealed state
 }

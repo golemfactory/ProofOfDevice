@@ -39,21 +39,16 @@ int write_file(const char* path, size_t size, const void* buffer);
 
 /*!
  *  \brief Initialize PoD enclave.
- *         Loads enclave, generates new enclave key pair, seals the private key, exports quote
- *         and public key.
+ *         Loads enclave, generates new enclave key pair, and seals the private key into the provided
+ *         buffer.
  *
- *  \param[in] enclave_path        Path to enclave binary.
- *  \param[in] sp_id_str           Service Provider ID (hex string).
- *  \param[in] sp_quote_type_str   Quote type as string ("linkable"/"unlinkable").
- *  \param[in] sealed_state_path   Path to sealed enclave state (will be overwritten).
- *  \param[in] quote_path          Path where enclave SGX quote will be saved.
+ *  \param[in] enclave_path       Path to enclave binary.
+ *  \param[in] sealed_state       Buffer to seal the private key to.
+ *  \param[in] sealed_state_size  Size of the provided buffer.
  *
- *  \return 0 on success, negative on error.
+ *  \return On success, number of bytes written to the buffer. On failure, negative value.
  */
 int pod_init_enclave(const char* enclave_path, uint8_t* sealed_state, size_t sealed_state_size);
-
-int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t* quote_buffer,
-                  size_t quote_buffer_size);
 
 /*!
  *  \brief Load PoD enclave and restore its private key from sealed state.
@@ -71,6 +66,19 @@ int pod_load_enclave(const char* enclave_path, const uint8_t* sealed_state, size
  *  \return 0 on success, negative on error.
  */
 int pod_unload_enclave(void);
+
+/*!
+ *  \brief Generate valid quote of this PoD enclave for remote attestation with IAS services.
+ *
+ *  \param[in] sp_id_str          Service Provider ID (hex string).
+ *  \param[in] sp_quote_type_str  Quote type as string ("linkable"/"unlinkable").
+ *  \param[in] quote_buffer       Buffer to save the quote to.
+ *  \param[in] quote_buffer_size  Size of the provided buffer.
+ *
+ *  \return On success, number of bytes written to the buffer. On failure, negative value.
+ */
+int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t* quote_buffer,
+                  size_t quote_buffer_size);
 
 /*!
  *  \brief Create PoD enclave digital signature for data buffer.

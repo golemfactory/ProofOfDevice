@@ -130,9 +130,8 @@ static sgx_enclave_id_t g_enclave_id = 0;
 static uint8_t* g_sealed_state = NULL;
 static size_t g_sealed_state_size = 0;
 
-static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
-                            uint8_t* sealed_state, size_t sealed_state_size, bool load_sealed_state) {
-                            
+static int load_pod_enclave_fresh(const char* enclave_path, bool debug_enabled,
+                                  uint8_t* sealed_state, size_t sealed_state_size) {
     int ret = -1;
     uint8_t* sealed_keys = NULL;
 
@@ -150,12 +149,6 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
 
     size_t sealed_size = 0;
 
-    if (load_sealed_state) {
-        printf("Loading sealed enclave state from provided buffer\n");
-        sealed_keys = sealed_state;
-        sealed_size = sealed_state_size;
-    }
-
     // ECALL: enclave initialization
     sgx_status_t sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size, NULL, 0);
 
@@ -171,9 +164,40 @@ static int load_pod_enclave(const char* enclave_path, bool debug_enabled,
 
     ret = g_sealed_state_size;
 out:
-    if (!load_sealed_state)
-        free(sealed_keys);
+    free(sealed_keys);
+    return ret;
+}
 
+static int load_pod_enclave_from_state(const char* enclave_path, bool debug_enabled,
+                                       const uint8_t* sealed_state, size_t sealed_state_size) {
+    int ret = -1;
+
+    if (g_enclave_id != 0) {
+        fprintf(stderr, "Enclave already loaded with id %lu\n", g_enclave_id);
+        goto out;
+    }
+
+    g_enclave_id = enclave_load(enclave_path, debug_enabled);
+    if (g_enclave_id == 0)
+        goto out;
+
+    printf("Loading sealed enclave state from provided buffer\n");
+
+    // ECALL: enclave initialization
+    sgx_status_t sgx_ret = e_initialize(g_enclave_id, &ret, (uint8_t*) sealed_state, sealed_state_size, NULL, 0);
+
+    if (sgx_ret != SGX_SUCCESS) {
+        fprintf(stderr, "Failed to call enclave initialization\n");
+        goto out;
+    }
+
+    if (ret < 0) {
+        fprintf(stderr, "Enclave initialization failed\n");
+        goto out;
+    }
+
+    ret = 0;
+out:
     return ret;
 }
 
@@ -284,19 +308,11 @@ out:
 }
 
 int pod_init_enclave(const char* enclave_path, uint8_t* sealed_state, size_t sealed_state_size) {
-    return load_pod_enclave(enclave_path,
-                            ENCLAVE_DEBUG_ENABLED,
-                            sealed_state,
-                            sealed_state_size,
-                            false); // overwrite existing sealed state
+    return load_pod_enclave_fresh(enclave_path, ENCLAVE_DEBUG_ENABLED, sealed_state, sealed_state_size);
 }
 
 int pod_load_enclave(const char* enclave_path, const uint8_t* sealed_state, size_t sealed_state_size) {
-    return load_pod_enclave(enclave_path,
-                            ENCLAVE_DEBUG_ENABLED,
-                            (uint8_t*) sealed_state,
-                            sealed_state_size,
-                            true); // load existing sealed state
+    return load_pod_enclave_from_state(enclave_path, ENCLAVE_DEBUG_ENABLED, sealed_state, sealed_state_size);
 }
 
 int pod_unload_enclave(void) {

@@ -7,6 +7,8 @@ use std::cell::RefCell;
 use std::fs;
 use std::path::Path;
 
+pub use wrappers::set_verbose;
+
 pub enum QuoteType {
     Linkable,
     Unlinkable,

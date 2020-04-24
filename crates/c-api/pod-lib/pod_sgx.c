@@ -10,6 +10,7 @@
 #include "pod_sgx.h"
 #include "pod_enclave.h"
 #include "pod_enclave_u.h"
+#include "pod_log.h"
 
 ssize_t get_file_size(int fd) {
     struct stat st;
@@ -30,14 +31,14 @@ void* read_file(void* buffer, const char* path, size_t* size) {
 
     f = fopen(path, "rb");
     if (!f) {
-        fprintf(stderr, "Failed to open file '%s' for reading: %s\n", path, strerror(errno));
+        ERROR("Failed to open file '%s' for reading: %s\n", path, strerror(errno));
         goto out;
     }
 
     if (*size == 0) { // read whole file
         fs = get_file_size(fileno(f));
         if (fs < 0) {
-            fprintf(stderr, "Failed to get size of file '%s': %s\n", path, strerror(errno));
+            ERROR("Failed to get size of file '%s': %s\n", path, strerror(errno));
             goto out;
         }
     } else {
@@ -47,13 +48,13 @@ void* read_file(void* buffer, const char* path, size_t* size) {
     if (!buffer) {
         buffer = malloc(fs);
         if (!buffer) {
-            fprintf(stderr, "No memory\n");
+            ERROR("No memory\n");
             goto out;
         }
     }
 
     if (fread(buffer, fs, 1, f) != 1) {
-        fprintf(stderr, "Failed to read file '%s'\n", path);
+        ERROR("Failed to read file '%s'\n", path);
         if (!buf) {
             free(buffer);
             buffer = NULL;
@@ -76,13 +77,13 @@ int write_file(const char* path, size_t size, const void* buffer) {
 
     f = fopen(path, "wb");
     if (!f) {
-        fprintf(stderr, "Failed to open file '%s' for writing: %s\n", path, strerror(errno));
+        ERROR("Failed to open file '%s' for writing: %s\n", path, strerror(errno));
         goto out;
     }
 
     if (size > 0 && buffer) {
         if (fwrite(buffer, size, 1, f) != 1) {
-            fprintf(stderr, "Failed to write file '%s': %s\n", path, strerror(errno));
+            ERROR("Failed to write file '%s': %s\n", path, strerror(errno));
             goto out;
         }
     }
@@ -103,14 +104,14 @@ static sgx_enclave_id_t enclave_load(const char* enclave_path, bool debug_enable
     sgx_misc_attribute_t misc_attribs = {0};
     sgx_enclave_id_t enclave_id = 0;
 
-    printf("Loading enclave from file '%s'\n", enclave_path);
+    DBG("Loading enclave from file '%s'\n", enclave_path);
 
     sgx_status_t sgx_ret = sgx_create_enclave(enclave_path, debug_enabled, &launch_token,
                                               &is_token_updated, &enclave_id, &misc_attribs);
     if (sgx_ret != SGX_SUCCESS) {
-        fprintf(stderr, "Failed to load enclave: %d\n", sgx_ret);
+        ERROR("Failed to load enclave: %d\n", sgx_ret);
     } else {
-        printf("Enclave loaded successfully, id = 0x%lx\n", enclave_id);
+        DBG("Enclave loaded successfully, id = 0x%lx\n", enclave_id);
     }
 
     return enclave_id;
@@ -119,9 +120,9 @@ static sgx_enclave_id_t enclave_load(const char* enclave_path, bool debug_enable
 static sgx_status_t enclave_unload(sgx_enclave_id_t enclave_id) {
     sgx_status_t sgx_ret = sgx_destroy_enclave(enclave_id);
     if (sgx_ret != SGX_SUCCESS)
-        fprintf(stderr, "Failed to unload enclave\n");
+        ERROR("Failed to unload enclave\n");
     else
-        printf("Enclave unloaded\n");
+        DBG("Enclave unloaded\n");
 
     return sgx_ret;
 }
@@ -136,7 +137,7 @@ static int load_pod_enclave_fresh(const char* enclave_path, bool debug_enabled,
     uint8_t* sealed_keys = NULL;
 
     if (g_enclave_id != 0) {
-        fprintf(stderr, "Enclave already loaded with id %lu\n", g_enclave_id);
+        ERROR("Enclave already loaded with id %lu\n", g_enclave_id);
         goto out;
     }
 
@@ -153,12 +154,12 @@ static int load_pod_enclave_fresh(const char* enclave_path, bool debug_enabled,
     sgx_status_t sgx_ret = e_initialize(g_enclave_id, &ret, sealed_keys, sealed_size, NULL, 0);
 
     if (sgx_ret != SGX_SUCCESS) {
-        fprintf(stderr, "Failed to call enclave initialization\n");
+        ERROR("Failed to call enclave initialization\n");
         goto out;
     }
 
     if (ret < 0) {
-        fprintf(stderr, "Enclave initialization failed\n");
+        ERROR("Enclave initialization failed\n");
         goto out;
     }
 
@@ -173,7 +174,7 @@ static int load_pod_enclave_from_state(const char* enclave_path, bool debug_enab
     int ret = -1;
 
     if (g_enclave_id != 0) {
-        fprintf(stderr, "Enclave already loaded with id %lu\n", g_enclave_id);
+        ERROR("Enclave already loaded with id %lu\n", g_enclave_id);
         goto out;
     }
 
@@ -181,18 +182,18 @@ static int load_pod_enclave_from_state(const char* enclave_path, bool debug_enab
     if (g_enclave_id == 0)
         goto out;
 
-    printf("Loading sealed enclave state from provided buffer\n");
+    DBG("Loading sealed enclave state from provided buffer\n");
 
     // ECALL: enclave initialization
     sgx_status_t sgx_ret = e_initialize(g_enclave_id, &ret, (uint8_t*) sealed_state, sealed_state_size, NULL, 0);
 
     if (sgx_ret != SGX_SUCCESS) {
-        fprintf(stderr, "Failed to call enclave initialization\n");
+        ERROR("Failed to call enclave initialization\n");
         goto out;
     }
 
     if (ret < 0) {
-        fprintf(stderr, "Enclave initialization failed\n");
+        ERROR("Enclave initialization failed\n");
         goto out;
     }
 
@@ -213,14 +214,14 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
     uint32_t quote_size = 0;
 
     if (g_enclave_id == 0) {
-        fprintf(stderr, "Enclave not loaded\n");
+        ERROR("Enclave not loaded\n");
         goto out;
     }
 
     // Initialize the quoting process, get quoting enclave info
     sgx_ret = sgx_init_quote(&qe_info, &epid_group_id);
     if (sgx_ret != SGX_SUCCESS) {
-        fprintf(stderr, "Failed to initialize quoting process\n");
+        ERROR("Failed to initialize quoting process\n");
         goto out;
     }
 
@@ -228,12 +229,12 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
     sgx_ret = sgx_calc_quote_size(NULL, 0, &quote_size);
 
     if (sgx_ret != SGX_SUCCESS) {
-        fprintf(stderr, "Failed to calculate quote size\n");
+        ERROR("Failed to calculate quote size\n");
         goto out;
     }
 
     if (quote_buffer_size < quote_size) {
-        fprintf(stderr, "Provided buffer size is too small to fit the quote of size %d\n", quote_size);
+        ERROR("Provided buffer size is too small to fit the quote of size %d\n", quote_size);
         ret = -1;
         goto out;
     }
@@ -242,7 +243,7 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
     sgx_ret = e_get_report(g_enclave_id, &ret, &qe_info, &report);
     if (sgx_ret != SGX_SUCCESS || ret < 0) {
         ret = -1;
-        fprintf(stderr, "Failed to get enclave's report\n");
+        ERROR("Failed to get enclave's report\n");
         goto out;
     }
 
@@ -267,7 +268,7 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
                             quote_size);
 
     if (sgx_ret != SGX_SUCCESS) {
-        fprintf(stderr, "Failed to get enclave quote: %d\n", sgx_ret);
+        ERROR("Failed to get enclave quote: %d\n", sgx_ret);
         goto out;
     }
 
@@ -278,27 +279,27 @@ static int generate_enclave_quote(sgx_spid_t sp_id, sgx_quote_sign_type_t quote_
     SHA256_CTX sha;
 
     if (SHA256_Init(&sha) != 1) {
-        fprintf(stderr, "Failed to init digest context\n");
+        ERROR("Failed to init digest context\n");
         goto out;
     }
 
     if (SHA256_Update(&sha, &qe_nonce, sizeof(qe_nonce)) != 1) {
-        fprintf(stderr, "Failed to calculate hash\n");
+        ERROR("Failed to calculate hash\n");
         goto out;
     }
 
     if (SHA256_Update(&sha, (sgx_quote_t*) quote_buffer, quote_size) != 1) {
-        fprintf(stderr, "Failed to calculate hash\n");
+        ERROR("Failed to calculate hash\n");
         goto out;
     }
 
     if (SHA256_Final(hash, &sha) != 1) {
-        fprintf(stderr, "Failed to finalize hash\n");
+        ERROR("Failed to finalize hash\n");
         goto out;
     }
 
     if (memcmp(&qe_report.body.report_data, hash, sizeof(hash)) != 0) {
-        fprintf(stderr, "Quoting Enclave report contains invalid data\n");
+        ERROR("Quoting Enclave report contains invalid data\n");
         goto out;
     }
 
@@ -332,13 +333,13 @@ int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t*
 
     // parse SPID
     if (strlen(sp_id_str) != 32) {
-        fprintf(stderr, "Invalid SPID: %s\n", sp_id_str);
+        ERROR("Invalid SPID: %s\n", sp_id_str);
         goto out;
     }
 
     for (int i = 0; i < 16; i++) {
         if (!isxdigit(sp_id_str[i * 2]) || !isxdigit(sp_id_str[i * 2 + 1])) {
-            fprintf(stderr, "Invalid SPID: %s\n", sp_id_str);
+            ERROR("Invalid SPID: %s\n", sp_id_str);
             goto out;
         }
 
@@ -351,7 +352,7 @@ int pod_get_quote(const char* sp_id_str, const char* sp_quote_type_str, uint8_t*
     } else if (*sp_quote_type_str == 'u' || *sp_quote_type_str == 'U') {
         sp_quote_type = SGX_UNLINKABLE_SIGNATURE;
     } else {
-        fprintf(stderr, "Invalid quote type: %s\n", sp_quote_type_str);
+        ERROR("Invalid quote type: %s\n", sp_quote_type_str);
         goto out;
     }
 
@@ -364,17 +365,17 @@ int pod_sign_buffer(const void* data, size_t data_size, void* signature, size_t 
     int ret = -1;
 
     if (g_enclave_id == 0) {
-        fprintf(stderr, "PoD enclave not loaded\n");
+        ERROR("PoD enclave not loaded\n");
         goto out;
     }
 
     if (!data || data_size == 0) {
-        fprintf(stderr, "Invalid data buffer\n");
+        ERROR("Invalid data buffer\n");
         goto out;
     }
 
     if (!signature || signature_size == 0) {
-        fprintf(stderr, "Invalid signature buffer\n");
+        ERROR("Invalid signature buffer\n");
         goto out;
     }
 
@@ -383,7 +384,7 @@ int pod_sign_buffer(const void* data, size_t data_size, void* signature, size_t 
                                        signature_size);
     if (sgx_ret != SGX_SUCCESS || ret < 0) {
         ret = -1;
-        fprintf(stderr, "Failed to sign data\n");
+        ERROR("Failed to sign data\n");
         goto out;
     }
 
@@ -396,7 +397,7 @@ int pod_sign_file(const char* input_path, const char* signature_path) {
     uint8_t signature[EC_SIGNATURE_SIZE];
 
     if (!input_path || !signature_path) {
-        fprintf(stderr, "Invalid path\n");
+        ERROR("Invalid path\n");
         goto out;
     }
 
@@ -413,7 +414,7 @@ int pod_sign_file(const char* input_path, const char* signature_path) {
     if (ret < 0)
         goto out;
 
-    printf("Saved signature to '%s'\n", signature_path);
+    DBG("Saved signature to '%s'\n", signature_path);
     ret = 0;
 
 out:
@@ -422,10 +423,10 @@ out:
 
 // OCALL: save sealed enclave state
 int o_store_sealed_data(const uint8_t* sealed_data, size_t sealed_size) {
-    printf("Saving sealed enclave state to provided buffer\n");
+    DBG("Saving sealed enclave state to provided buffer\n");
 
     if (g_sealed_state_size < sealed_size) {
-      printf("Provided buffer is too small to fit required size: %ld\n", sealed_size);
+      ERROR("Provided buffer is too small to fit required size: %ld\n", sealed_size);
       return -1;
     }
 
@@ -436,5 +437,5 @@ int o_store_sealed_data(const uint8_t* sealed_data, size_t sealed_size) {
 
 // OCALL: print string
 void o_print(const char* str) {
-    printf("%s", str);
+    DBG("%s", str);
 }

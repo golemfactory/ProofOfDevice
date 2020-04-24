@@ -53,6 +53,8 @@ struct ChallengeResponse {
 #[actix_rt::main]
 async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
+    // Turn on enclave logging
+    pod_api::set_verbose(true);
 
     let address = opt.address.unwrap_or_else(|| "127.0.0.1".to_owned());
     let port = opt.port.unwrap_or(8080);

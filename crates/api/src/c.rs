@@ -1,5 +1,6 @@
 #[link(name = "pod_sgx")]
 extern "C" {
+    pub(super) fn set_verbose(verbose: bool);
     pub(super) fn pod_init_enclave(
         enclave_path: *const libc::c_char,
         sealed_keys: *mut u8,

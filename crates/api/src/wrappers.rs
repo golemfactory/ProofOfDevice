@@ -9,6 +9,10 @@ const MAX_SEALED_KEYS_SIZE: usize = 1024; // Should be plenty for ed25519 privat
 const MAX_QUOTE_SIZE: usize = 2048; // Usually around 1200 bytes required
 const EC_SIGNATURE: usize = 64; // EC signature should always be 64bytes long!
 
+pub fn set_verbose(verbose: bool) {
+    unsafe { c::set_verbose(verbose) }
+}
+
 pub(super) fn init_enclave<P: AsRef<Path>>(enclave_path: P) -> Result<Vec<u8>> {
     let enclave_path = path_to_c_string(enclave_path)?;
     let sealed_keys_buffer = &mut [0u8; MAX_SEALED_KEYS_SIZE];

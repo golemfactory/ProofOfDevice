@@ -1,0 +1,44 @@
+.login {
+	width: 100%;
+	height: calc(100vh - 65px);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.form {
+	min-width: 300px;
+	width: 30%;
+}
+
+.form input{
+	margin-top: 7px;
+	margin-bottom: 7px;
+	font-size: 14pt;
+	padding: 0 7px;
+}
+
+.form button {
+	width: 140px;
+	height: 35px;
+	background: var(--color4);
+	color: var(--color3);
+	border: none;
+	font-size: 14pt;
+	margin-top: 7px;
+	border-radius: 7px;
+	cursor: pointer;
+}
+
+.form button:hover {
+	background: var(--color5);
+}
+
+fieldset {
+	padding: 42px 0;
+}
+
+fieldset legend {
+	font-size: 14pt;
+	margin: 0 14pt;
+}

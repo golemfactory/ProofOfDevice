@@ -1,0 +1,17 @@
+.home {
+	width: 100%;
+	height: calc(100vh - 63px);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-size: 21pt;
+}
+
+/*.home span {
+	background: white;
+	padding: 7px;
+	border-radius: 7px;
+	-webkit-box-shadow: 7px 7px 5px 0px rgba(50, 50, 50, 0.75);
+	-moz-box-shadow: 7px 7px 5px 0px rgba(50, 50, 50, 0.75);
+	box-shadow: 7px 7px 5px 0px rgba(50, 50, 50, 0.75);
+}*/

@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Result};
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 use serde_json::Value;
 use std::convert::TryFrom;
 use std::io::{self, Read, Write};
@@ -16,6 +18,10 @@ struct Opt {
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
+    let mut child = Command::new(&opt.path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
     loop {
         print!("> ");
         io::stdout().flush()?;
@@ -34,10 +40,6 @@ fn main() -> Result<()> {
 
         let msg_len = json.len();
         let msg_len = u32::try_from(msg_len)?;
-        let mut child = Command::new(&opt.path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()?;
 
         {
             let stdin = child
@@ -47,22 +49,28 @@ fn main() -> Result<()> {
             stdin.write_all(&msg_len.to_ne_bytes())?;
             stdin.write_all(json.as_bytes())?;
         }
+        println!("Message sent.");
 
         {
-            let stdout = child.stdout.as_mut().ok_or(anyhow!("failed to open stdout"))?;
+            let stdout = child
+                .stdout
+                .as_mut()
+                .ok_or(anyhow!("failed to open stdout"))?;
             let mut msg_len = [0u8; 4];
             stdout.read_exact(&mut msg_len)?;
             let msg_len = u32::from_ne_bytes(msg_len);
             let msg_len = usize::try_from(msg_len).expect("u32 should fit into usize");
-            println!("msg_len = {}", msg_len);
 
             let mut msg = Vec::new();
-            msg.resize(120, 0);
+            msg.resize(msg_len, 0);
             stdout.read_exact(&mut msg)?;
             let output: Value = serde_json::from_slice(&msg)?;
             println!("{}", output);
         }
     }
+    signal::kill(Pid::from_raw(child.id() as i32), Some(Signal::SIGTERM))?;
+    let status_code = child.wait()?;
+    println!("Child exited with {}", status_code);
 
     Ok(())
 }

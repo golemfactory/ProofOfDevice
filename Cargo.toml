@@ -8,9 +8,13 @@ edition = "2018"
 pod-api = { path = "crates/api", version = "0.1.0" }
 rust-sgx-util = { path = "crates/rust-sgx-util", features = ["with_serde"], version = "0.2.3" }
 anyhow = "1"
+thiserror = "1"
 base64 = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+structopt = "0.3"
+nix = "0.17"
+libc = "0.2"
 
 [badges]
 maintenance = { status = "actively-developed" }

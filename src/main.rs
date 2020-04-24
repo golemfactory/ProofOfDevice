@@ -23,20 +23,50 @@ extern "C" fn handle_signals(signal: libc::c_int) {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type", content = "message", rename_all = "snake_case")]
+#[serde(tag = "msg", rename_all = "snake_case")]
 enum IncomingMessage {
-    GetQuote(String),
-    #[serde(with = "base_64")]
-    Challenge(Vec<u8>),
+    GetQuote {
+        spid: String,
+    },
+    SignChallenge {
+        #[serde(with = "base_64")]
+        challenge: Vec<u8>,
+    },
 }
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "type", content = "message", rename_all = "snake_case")]
+#[serde(tag = "msg", rename_all = "snake_case")]
+#[allow(dead_code)]
 enum OutgoingMessage {
-    Quote(Quote),
-    #[serde(with = "base_64")]
-    Response(Vec<u8>),
-    Error(String),
+    GetQuote {
+        quote: Quote,
+    },
+
+    SignChallenge {
+        #[serde(with = "base_64")]
+        signed: Vec<u8>,
+    },
+    Error {
+        description: String,
+    },
+}
+
+impl OutgoingMessage {
+    fn get_quote(quote: Quote) -> Self {
+        Self::GetQuote { quote }
+    }
+
+    fn sign_challenge<B: AsRef<[u8]>>(signed: B) -> Self {
+        Self::SignChallenge {
+            signed: signed.as_ref().to_vec(),
+        }
+    }
+
+    fn error<S: ToString>(desc: S) -> Self {
+        Self::Error {
+            description: desc.to_string(),
+        }
+    }
 }
 
 mod base_64 {
@@ -61,17 +91,17 @@ mod base_64 {
 fn reply<B: AsRef<[u8]>>(msg: B) -> Result<Vec<u8>> {
     let msg: IncomingMessage = serde_json::from_slice(msg.as_ref())?;
     let reply = match msg {
-        IncomingMessage::GetQuote(spid) => {
+        IncomingMessage::GetQuote { spid } => {
             let pod_enclave = PodEnclave::new(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
             let quote = pod_enclave.get_quote(spid, QuoteType::Unlinkable)?;
-            let reply = OutgoingMessage::Quote(quote);
+            let reply = OutgoingMessage::get_quote(quote);
             let serialized = serde_json::to_vec(&reply)?;
             serialized
         }
-        IncomingMessage::Challenge(challenge) => {
+        IncomingMessage::SignChallenge { challenge } => {
             let pod_enclave = PodEnclave::new(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
             let signature = pod_enclave.sign(challenge)?;
-            let reply = OutgoingMessage::Response(signature);
+            let reply = OutgoingMessage::sign_challenge(signature);
             let serialized = serde_json::to_vec(&reply)?;
             serialized
         }
@@ -118,7 +148,7 @@ fn run() -> Result<()> {
 
         let reply = match reply(msg) {
             Ok(reply) => reply,
-            Err(err) => serde_json::to_vec(&OutgoingMessage::Error(err.to_string()))?,
+            Err(err) => serde_json::to_vec(&OutgoingMessage::error(err))?,
         };
         let reply_len: u32 = reply.len().try_into()?;
         io::stdout().write_all(&reply_len.to_ne_bytes())?;

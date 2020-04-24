@@ -49,7 +49,6 @@ fn main() -> Result<()> {
             stdin.write_all(&msg_len.to_ne_bytes())?;
             stdin.write_all(json.as_bytes())?;
         }
-        println!("Message sent.");
 
         {
             let stdout = child

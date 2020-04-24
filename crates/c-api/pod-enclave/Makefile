@@ -45,7 +45,7 @@ CFLAGS += -m64 \
 	-std=c99 \
 	-I$(SGX_INC) \
 	-I$(SGX_INC)/tlibc \
-	-I$(SGX_SSL_INC)
+	-I$(SGX_SSL_INC) 
 
 LDFLAGS := -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles \
 	-L$(SGX_LIB) -L$(SGX_SSL_LIB) \

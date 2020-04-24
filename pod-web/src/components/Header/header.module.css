@@ -1,0 +1,30 @@
+.appHeader {
+  background-color: #282c34;
+  height: 63px;
+  display: flex;
+  align-items: center;
+  color: white;
+  padding: 0 35px;
+}
+.appHeader nav {
+	width: 100%;
+	display: flex;
+}
+
+.navItem {
+	font-size: 14pt;
+  cursor: pointer;
+  outline: 0;
+}
+
+.navItem:hover, .navItem:focus, .navItem:active {
+  outline: 0;
+}
+
+.navActive {
+  text-decoration: underline;
+}
+
+.navItem + .navItem {
+	margin-left: 14px;
+}

@@ -1,0 +1,51 @@
+{
+  "manifest_version": 2,
+  "name": "PoD",
+  "version": "0.0.1",
+  "author": "Muhammed Tanrıkulu<muhammed@golem.network>",
+  "description": "Extension for Proof of Device",
+  "homepage_url": "https://golem.network",
+  "icons": {
+    "48": "icons/pod-48.png"
+  },
+
+  "background": {
+    "scripts": [
+      "js/check-browser.js",
+      "js/promisify.js",
+      "js/constants.js",
+      "background.js"
+    ]
+  },
+
+  "permissions": [
+    "activeTab",
+    "storage",
+    "nativeMessaging"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": ["http://*/*"],
+      "js": [
+        "js/check-browser.js",
+        "js/promisify.js",
+        "js/constants.js",
+        "frontend.js"
+      ],
+      "css": ["style/main.css"]
+    }
+  ],
+
+  "web_accessible_resources": ["resources/*.png", "pages/*"],
+
+  "options_ui": {
+    "page": "pages/settings.html",
+    "open_in_tab": true
+  },
+
+  "browser_action": {
+    "default_icon": "icons/pod-32.png",
+    "default_title": "Pod-Ext"
+  }
+}

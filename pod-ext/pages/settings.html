@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <link rel="stylesheet" href="../style/pure-min.css" />
+        <link href="../style/montserrat-font.css" rel="stylesheet" />
+        <link rel="stylesheet" href="settings.css" />
+    </head>
+
+    <body>
+        <div class="header">
+            <img src="../resources/header.png" alt="PoD" />
+            <div class="header_name">
+                <h3>PoD</h3>
+            </div>
+            <img
+                src="../resources/header.png"
+                alt="PoD"
+            />
+        </div>
+        <form id="settingsForm" class="panel">
+            <fieldset id="field_disabel_form">
+                <header>
+                    <p>Test</p>
+                </header>
+                <div class="pure-form pure-form-aligned scrollable">
+                    <section>
+                        <h3 class="settings__label">Test</h3>
+                        <div></div>
+                    </section>
+                    <section>
+                        <h3 class="settings__label">Test</h3>
+                        <div></div>
+                    </section>
+                </div>
+                <footer class="panel__action">
+                    <button
+                        class="pure-button pure-button-primary button-submit"
+                        type="submit"
+                        id="saveSettings"
+                    >
+                        Save
+                    </button>
+                </footer>
+            </fieldset>
+        </form>
+    </body>
+    <script src="../js/check-browser.js"></script>
+    <script src="../js/promisify.js"></script>
+    <script src="settings.js"></script>
+</html>

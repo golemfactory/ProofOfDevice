@@ -15,14 +15,15 @@ The project comprises of four main components:
                      can unseal to then use it for signing.
 * [`pod-app`] -- This is the native app that _pod_ uses to interface with the `pod-enclave`. It implements
                  [native messaging] and therefore can be used from within a browser environment.
-* [`pod-browser`] -- This is the browser extension _pod_ uses as a GUI for the enduser of the _pod_
-                     authentication mechanism.
+* [`pod-ext`] -- This is the browser extension connects _pod_ to generate quote and sign the challenge for the _pod-web_ authentication mechanism.
+* [`pod-web`] -- This is the web app _pod-ext_ connects as a GUI for the end user of the _pod_.
 * [`pod-server`] -- This is the web server that the service provider who offers _pod_ as an added authentication
                     mechanism uses.
 
 [`pod-enclave`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-enclave
 [`pod-app`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-app
-[`pod-browser`]: https://github.com/golemfactory/ProofOfDevice
+[`pod-ext`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-ext
+[`pod-web`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-web
 [`pod-server`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-server
 
 For each of the components, follow the links to learn more and check out how to build and run them.

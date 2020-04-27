@@ -5,8 +5,8 @@ authors = ["Jakub Konka <jakub.konka@golem.network>"]
 edition = "2018"
 
 [dependencies]
-pod-api = { path = "crates/api", version = "0.1.0" }
-rust-sgx-util = { path = "crates/rust-sgx-util", features = ["with_serde"], version = "0.2.3" }
+pod-api = { path = "../lib/api", version = "0.1.0" }
+rust-sgx-util = { path = "../lib/rust-sgx-util", features = ["with_serde"], version = "0.2.3" }
 anyhow = "1"
 thiserror = "1"
 base64 = "0.12"
@@ -19,5 +19,3 @@ libc = "0.2"
 [badges]
 maintenance = { status = "actively-developed" }
 
-[workspace]
-members = [ "crates/server" ]

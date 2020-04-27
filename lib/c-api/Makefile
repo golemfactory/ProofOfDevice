@@ -23,7 +23,7 @@ CFLAGS += -fPIC \
     -m64 \
     -D_GNU_SOURCE \
     -I$(SGX_INC) \
-    -I../pod-enclave 
+    -I../../pod-enclave 
 
 LDFLAGS := -lcrypto \
     -L$(SGX_LIB) -lsgx_urts -lsgx_uae_service \
@@ -40,7 +40,7 @@ pod_sgx.o: pod_sgx.c
 pod_log.o: pod_log.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-pod_enclave_u.o: ../pod-enclave/pod_enclave_u.c
+pod_enclave_u.o: ../../pod-enclave/pod_enclave_u.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: install

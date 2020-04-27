@@ -5,7 +5,6 @@ use messages::{reply, OutgoingMessage};
 use nix::sys::signal::{self, SigHandler, Signal};
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
-use std::fs;
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process;
@@ -28,6 +27,17 @@ extern "C" fn handle_signals(signal: libc::c_int) {
 struct Config {
     private_key: PathBuf,
     enclave: PathBuf,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        let enclave = PathBuf::from(DEFAULT_ENCLAVE_PATH);
+        let private_key = PathBuf::from(DEFAULT_PRIVATE_KEY_PATH);
+        Self {
+            enclave,
+            private_key,
+        }
+    }
 }
 
 fn run() -> Result<()> {
@@ -100,22 +110,15 @@ fn config() -> Result<Config> {
     // Firstly, check in xdg config folder.
     let dirs = xdg::BaseDirectories::with_prefix("pod-app")
         .context("couldn't create xdg base dir instance")?;
-    if let Some(config) = dirs.find_config_file("config.toml") {
-        let config = fs::read(&config).with_context(|| {
-            format!(
-                "failed to read contents of config in '{}'",
-                config.display()
-            )
-        })?;
-        let config = toml::from_slice(&config)?;
-        return Ok(config);
-    }
-    // OK, if no config.toml is present in xdg config folder, we'll
-    // assume a dev build from sources and prepopulate the paths
-    // accordingly.
-    let config = Config {
-        private_key: PathBuf::from(DEFAULT_PRIVATE_KEY_PATH),
-        enclave: PathBuf::from(DEFAULT_ENCLAVE_PATH),
+    let config = match dirs.find_data_file("pod_enclave.signed.so") {
+        Some(enclave) => {
+            let private_key = dirs.get_data_home().join("private_key.sealed");
+            Config {
+                private_key,
+                enclave,
+            }
+        }
+        None => Config::default(),
     };
     Ok(config)
 }

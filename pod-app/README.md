@@ -6,6 +6,14 @@ therefore can be used from within a browser environment such as [`pod-ext`].
 ## Installation
 
 Coming soon...
+You can install the app together with the enclave file `pod_enclave.signed.so` using the provided simple
+`install.sh` script. This script will install the `pod-app` into the local cargo registry, and will create
+`$HOME/.local/share/pod-app` local storage dir and copy the enclave file into it. The sealed private key
+file `private_key.sealed` will also reside there.
+
+```
+./install.sh
+```
 
 ## Native messages handled by `pod-app`
 

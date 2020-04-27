@@ -1,18 +1,20 @@
-use anyhow::{anyhow, Result};
+mod messages;
+
+use anyhow::{anyhow, Context, Result};
+use messages::{reply, OutgoingMessage};
 use nix::sys::signal::{self, SigHandler, Signal};
-use pod_api::{PodEnclave, QuoteType};
-use rust_sgx_util::Quote;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
+use std::fs;
 use std::io::{self, Read, Write};
+use std::path::PathBuf;
 use std::process;
-use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-static SIGNALED: AtomicBool = AtomicBool::new(false);
+const DEFAULT_PRIVATE_KEY_PATH: &str = "private_key.sealed";
+const DEFAULT_ENCLAVE_PATH: &str = "../pod-enclave/pod_enclave.signed.so";
 
-const SEALED_KEYS_PATH: &str = "pod_data.sealed";
-const ENCLAVE_PATH: &str = "../pod-enclave/pod_enclave.signed.so";
+static SIGNALED: AtomicBool = AtomicBool::new(false);
 
 extern "C" fn handle_signals(signal: libc::c_int) {
     let signal = Signal::try_from(signal).expect("valid raw signal value");
@@ -23,93 +25,13 @@ extern "C" fn handle_signals(signal: libc::c_int) {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "msg", rename_all = "snake_case")]
-enum IncomingMessage {
-    GetQuote {
-        spid: String,
-    },
-    SignChallenge {
-        #[serde(with = "base_64")]
-        challenge: Vec<u8>,
-    },
-}
-
-#[derive(Debug, Serialize)]
-#[serde(tag = "msg", rename_all = "snake_case")]
-#[allow(dead_code)]
-enum OutgoingMessage {
-    GetQuote {
-        quote: Quote,
-    },
-
-    SignChallenge {
-        #[serde(with = "base_64")]
-        signed: Vec<u8>,
-    },
-    Error {
-        description: String,
-    },
-}
-
-impl OutgoingMessage {
-    fn get_quote(quote: Quote) -> Self {
-        Self::GetQuote { quote }
-    }
-
-    fn sign_challenge<B: AsRef<[u8]>>(signed: B) -> Self {
-        Self::SignChallenge {
-            signed: signed.as_ref().to_vec(),
-        }
-    }
-
-    fn error<S: ToString>(desc: S) -> Self {
-        Self::Error {
-            description: desc.to_string(),
-        }
-    }
-}
-
-mod base_64 {
-    use serde::{self, Deserialize, Deserializer, Serializer};
-
-    pub(crate) fn serialize<S>(blob: &[u8], serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&base64::encode(blob))
-    }
-
-    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let string = String::deserialize(deserializer)?;
-        base64::decode(&string).map_err(serde::de::Error::custom)
-    }
-}
-
-fn reply<B: AsRef<[u8]>>(msg: B) -> Result<Vec<u8>> {
-    let msg: IncomingMessage = serde_json::from_slice(msg.as_ref())?;
-    let reply = match msg {
-        IncomingMessage::GetQuote { spid } => {
-            let pod_enclave = PodEnclave::new(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
-            let quote = pod_enclave.get_quote(spid, QuoteType::Unlinkable)?;
-            let reply = OutgoingMessage::get_quote(quote);
-            let serialized = serde_json::to_vec(&reply)?;
-            serialized
-        }
-        IncomingMessage::SignChallenge { challenge } => {
-            let pod_enclave = PodEnclave::new(ENCLAVE_PATH, SEALED_KEYS_PATH)?;
-            let signature = pod_enclave.sign(challenge)?;
-            let reply = OutgoingMessage::sign_challenge(signature);
-            let serialized = serde_json::to_vec(&reply)?;
-            serialized
-        }
-    };
-    Ok(reply)
+struct Config {
+    private_key: PathBuf,
+    enclave: PathBuf,
 }
 
 fn run() -> Result<()> {
+    let config = config()?;
     // Install signal handler for SIGINT and SIGTERM
     let handler = SigHandler::Handler(handle_signals);
     unsafe { signal::signal(Signal::SIGTERM, handler)? };
@@ -135,7 +57,12 @@ fn run() -> Result<()> {
                         return Err(anyhow!("Unexpected EOF or a broken pipe!"));
                     }
                 }
-                _ => return Err(err.into()),
+                _ => {
+                    return Err(anyhow!(
+                        "failed to read message len from stdin (first 4 bytes): {}",
+                        err
+                    ))
+                }
             }
         }
 
@@ -144,19 +71,53 @@ fn run() -> Result<()> {
 
         let mut msg = Vec::new();
         msg.resize(msg_len as usize, 0);
-        io::stdin().read_exact(&mut msg)?;
+        io::stdin()
+            .read_exact(&mut msg)
+            .context("failed to read message from stdin")?;
 
-        let reply = match reply(msg) {
+        let reply = match reply(msg, &config) {
             Ok(reply) => reply,
-            Err(err) => serde_json::to_vec(&OutgoingMessage::error(err))?,
+            Err(err) => serde_json::to_vec(&OutgoingMessage::error(err))
+                .context("converting error to JSON failed")?,
         };
-        let reply_len: u32 = reply.len().try_into()?;
-        io::stdout().write_all(&reply_len.to_ne_bytes())?;
-        io::stdout().write_all(&reply)?;
+        let reply_len: u32 = reply
+            .len()
+            .try_into()
+            .context("reply len overflew 32bit register")?;
+        io::stdout()
+            .write_all(&reply_len.to_ne_bytes())
+            .context("failed to write reply length to stdout (first 4 bytes)")?;
+        io::stdout()
+            .write_all(&reply)
+            .context("failed to write reply to stdout")?;
         io::stdout().flush()?;
     }
 
     Ok(())
+}
+
+fn config() -> Result<Config> {
+    // Firstly, check in xdg config folder.
+    let dirs = xdg::BaseDirectories::with_prefix("pod-app")
+        .context("couldn't create xdg base dir instance")?;
+    if let Some(config) = dirs.find_config_file("config.toml") {
+        let config = fs::read(&config).with_context(|| {
+            format!(
+                "failed to read contents of config in '{}'",
+                config.display()
+            )
+        })?;
+        let config = toml::from_slice(&config)?;
+        return Ok(config);
+    }
+    // OK, if no config.toml is present in xdg config folder, we'll
+    // assume a dev build from sources and prepopulate the paths
+    // accordingly.
+    let config = Config {
+        private_key: PathBuf::from(DEFAULT_PRIVATE_KEY_PATH),
+        enclave: PathBuf::from(DEFAULT_ENCLAVE_PATH),
+    };
+    Ok(config)
 }
 
 fn main() {

@@ -1,10 +1,18 @@
 use std::env;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 const LIB_ROOT: &str = "../lib/c-api";
 const ENCLAVE_ROOT: &str = "../pod-enclave";
 
 fn main() {
+    // Run Makefile for `pod-enclave` first as we need it to build the
+    // c-api lib.
+    let mut cmd = Command::new("make");
+    cmd.stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .current_dir("../pod-enclave");
+    cmd.output().expect("make pod-enclave should succeed");
     // Get some basic conf vars
     let sgx_sdk = env::var("SGX_SDK").unwrap_or("/opt/intel/sgxsdk".to_string());
     let sgx_sdk_path = Path::new(&sgx_sdk);

@@ -1,4 +1,4 @@
-# rust-sgx-util
+# `rust-sgx-util`
 
 A safe wrapper around Graphene's [`sgx_util`] C-library.
 

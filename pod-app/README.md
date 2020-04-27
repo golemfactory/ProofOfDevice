@@ -24,7 +24,9 @@ Simply run from the repo's root:
 cargo build
 ```
 
-## Testing with `browser_mock` app
+## Examples
+
+### `browser_mock` app
 
 For testing purposes, there is a `browser_mock` app as part of the `pod-app` which can be used for
 manual testing of the native messaging responses of the `pod-app`.
@@ -38,7 +40,7 @@ cargo build
 And then run:
 
 ```
-cargo run --bin browser_mock target/debug/pod-app
+cargo run --example browser_mock target/debug/pod-app
 ```
 
 You can send all request-type messages to the `pod-app` using `browser_mock` app and observe its
@@ -51,3 +53,29 @@ response. For instance:
 
 [native messaging]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging#Closing_the_native_app
 
+### `webservice_client` app
+
+For some end-to-end testing, you can use the provided simple test client which
+exposes two bits of functionality: registering and authenticating with the [`pod-server`]
+web service.
+
+The former takes a username and Service Provider's ID (SPID):
+
+```
+cargo run --example webservice_client -- register johndoe deadbeef123456
+```
+
+This command will initiate a POST request to `/register` entrypoint.
+
+The latter on the other hand takes only your username as an argument:
+
+```
+cargo run --example webservice_client -- authenticate johndoe
+```
+
+This command initiates 3 requests: a GET to `/auth` to obtain a challenge,
+a POST to `/auth` to validate the challenge and authenticate with the
+service, and finally a GET to `/` to verify that we've indeed successfully
+signed in.
+
+[`pod-server`]: https://github.com/golemfactory/proofofdevice/tree/master/pod-server

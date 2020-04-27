@@ -1,5 +1,5 @@
 ===========
-pod-enclave
+``pod-enclave``
 ===========
 
 This sample consists of the PoD SGX enclave (``pod_enclave``).

@@ -1,9 +1,8 @@
 ===========
-pod-library
+pod-enclave
 ===========
 
-This sample consists of the PoD SGX enclave (``pod_enclave``), and a shared library that exposes
-the enclave functionality (``pod_library``).
+This sample consists of the PoD SGX enclave (``pod_enclave``).
 
 The enclave uses ED25519 keys for signing. Public key size is 32 bytes, signature size is 64 bytes.
 See `<https://en.wikipedia.org/wiki/EdDSA#Ed25519>`_.

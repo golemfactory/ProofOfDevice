@@ -1,4 +1,4 @@
-# pod-server
+# `pod-server`
 
 A simple implementation of a web service facilitating the Proof-of-device
 at the service provider's end.
@@ -54,7 +54,7 @@ specify the path to the config file:
 cargo run -- config.toml -v
 ```
 
-### RESTful API
+## RESTful API
 
 The service strives to communicate with JSON only, and the message will have a 
 general structure like below:
@@ -69,7 +69,7 @@ general structure like below:
 `status` assumes either `ok`, or `error`, and details are encapsulated within
 the `description` field.
 
-#### Available entrypoints:
+### Available entrypoints:
 
 * GET `/` -- dummy route which will respond with `203` if user successfully
   authenticated, or a `403` with description of the error encoded as JSON.
@@ -121,28 +121,3 @@ the `description` field.
     "response": "AAAA...AAA"
   }
   ```
-
-## Testing with simple test client
-
-For some end-to-end testing, you can use the provided simple test client which
-exposes two bits of functionality: registering and authenticating with the
-service.
-
-The former takes a username and Service Provider's ID (SPID):
-
-```
-cargo run --example test_client -- register johndoe deadbeef123456
-```
-
-This command will initiate a POST request to `/register` entrypoint.
-
-The latter on the other hand takes only your username as an argument:
-
-```
-cargo run --example test_client -- authenticate johndoe
-```
-
-This command initiates 3 requests: a GET to `/auth` to obtain a challenge,
-a POST to `/auth` to validate the challenge and authenticate with the
-service, and finally a GET to `/` to verify that we've indeed successfully
-signed in.

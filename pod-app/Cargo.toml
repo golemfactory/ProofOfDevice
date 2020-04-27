@@ -15,6 +15,7 @@ serde_json = "1"
 structopt = "0.3"
 nix = "0.17"
 libc = "0.2"
+xdg = "2"
 
 [dev-dependencies]
 actix-web = "2"

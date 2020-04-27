@@ -25,6 +25,7 @@ The project comprises of four main components:
 [`pod-ext`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-ext
 [`pod-web`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-web
 [`pod-server`]: https://github.com/golemfactory/ProofOfDevice/tree/master/pod-server
+[native messaging]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging
 
 For each of the components, follow the links to learn more and check out how to build and run them.
 

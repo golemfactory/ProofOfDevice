@@ -3,6 +3,17 @@
 The native app that _pod_ uses to interface with the `pod-enclave`. It implements [native messaging] and
 therefore can be used from within a browser environment such as [`pod-ext`].
 
+## Installation
+
+You can install the app together with the enclave file `pod_enclave.signed.so` using the provided simple
+`install.sh` script. This script will install the `pod-app` into the local cargo registry, and will create
+`$HOME/.local/share/pod-app` local storage dir and copy the enclave file into it. The sealed private key
+file `private_key.sealed` will also reside there.
+
+```
+./install.sh
+```
+
 ## Native messages handled by `pod-app`
 
 All requests are in JSON format. See [native messaging] for more info.
@@ -16,7 +27,9 @@ All requests are in JSON format. See [native messaging] for more info.
   - `{ "msg" : "sign_challenge", "signed" : "BBBBBAAAAABB" }`
   - `{ "msg" : "error", "description" : "description of the error" }`
 
-## Building
+## Development
+
+### Building
 
 Simply run from the repo's root:
 
@@ -25,6 +38,7 @@ cargo build
 ```
 
 This will build [`pod-enclave`] by default which is a prerequisite for the `pod-app`.
+
 
 ## Examples
 
@@ -83,4 +97,3 @@ signed in.
 [`pod-server`]: https://github.com/golemfactory/proofofdevice/tree/master/pod-server
 [`pod-enclave`]: https://github.com/golemfactory/proofofdevice/tree/master/pod-enclave
 [native-messaging]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging
-

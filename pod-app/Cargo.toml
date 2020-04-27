@@ -16,6 +16,13 @@ structopt = "0.3"
 nix = "0.17"
 libc = "0.2"
 
+[dev-dependencies]
+actix-web = "2"
+actix-rt = "1"
+
+[build-dependencies]
+cc = "1"
+
 [badges]
 maintenance = { status = "actively-developed" }
 

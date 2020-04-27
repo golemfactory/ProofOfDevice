@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 static SIGNALED: AtomicBool = AtomicBool::new(false);
 
 const SEALED_KEYS_PATH: &str = "pod_data.sealed";
-const ENCLAVE_PATH: &str = "crates/c-api/pod-enclave/pod_enclave.signed.so";
+const ENCLAVE_PATH: &str = "../pod-enclave/pod_enclave.signed.so";
 
 extern "C" fn handle_signals(signal: libc::c_int) {
     let signal = Signal::try_from(signal).expect("valid raw signal value");

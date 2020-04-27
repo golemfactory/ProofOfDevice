@@ -7,7 +7,7 @@ use serde::Serialize;
 use structopt::StructOpt;
 
 const SEALED_KEYS_PATH: &str = "pod_data.sealed";
-const ENCLAVE_PATH: &str = "../c-api/pod-enclave/pod_enclave.signed.so";
+const ENCLAVE_PATH: &str = "../pod-enclave/pod_enclave.signed.so";
 
 #[derive(Debug, StructOpt)]
 struct Opt {

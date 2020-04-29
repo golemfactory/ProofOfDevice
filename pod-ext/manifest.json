@@ -9,6 +9,12 @@
     "48": "icons/pod-48.png"
   },
 
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "pod_app@golem.network"
+    }
+  },
+
   "background": {
     "scripts": [
       "js/check-browser.js",

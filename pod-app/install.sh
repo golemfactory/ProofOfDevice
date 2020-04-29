@@ -39,10 +39,12 @@ sed -i -e "s/NATIVE_APP_PATH/$ESCAPED_APP_PATH/" "$TARGET_DIR/$APP_NAME.json"
 # Set permissions for the manifest to be shown by all users.
 chmod o+r "$TARGET_DIR/$APP_NAME.json"
 
-
 cargo install --path . --force
 
-rm --recursive $INSTALL_DIR
+if [ -d $INSTALL_DIR ]; then
+	rm --recursive $INSTALL_DIR
+fi
+
 mkdir -p $INSTALL_DIR
 
 cp -f ../pod-enclave/pod_enclave.signed.so $INSTALL_DIR

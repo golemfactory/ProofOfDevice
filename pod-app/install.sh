@@ -14,13 +14,13 @@ if [ "$(whoami)" = "root" ]; then
 
 	# Check if Firefox is 64bit.
 	if [ -d "/usr/lib64/mozilla/" ]; then
-  	  TARGET_DIR="/usr/lib64/mozilla/native-messaging-hosts/"
+  	  TARGET_DIR="/usr/lib64/mozilla/native-messaging-hosts"
 	else
-	  TARGET_DIR="/usr/lib/mozilla/native-messaging-hosts/"
+	  TARGET_DIR="/usr/lib/mozilla/native-messaging-hosts"
 	fi
 
 else
-  TARGET_DIR="$HOME/.mozilla/native-messaging-hosts/"
+  TARGET_DIR="$HOME/.mozilla/native-messaging-hosts"
 fi
 
 # Create directory to copy manifest.

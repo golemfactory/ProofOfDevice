@@ -16,6 +16,8 @@ structopt = "0.3"
 nix = "0.17"
 libc = "0.2"
 xdg = "2"
+log = "0.4"
+simplelog = "0.7"
 
 [dev-dependencies]
 actix-web = "2"

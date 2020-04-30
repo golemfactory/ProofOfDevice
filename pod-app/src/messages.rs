@@ -28,9 +28,6 @@ pub(super) enum OutgoingMessage {
         #[serde(with = "base_64")]
         signed: Vec<u8>,
     },
-    Error {
-        description: String,
-    },
 }
 
 impl OutgoingMessage {
@@ -41,12 +38,6 @@ impl OutgoingMessage {
     pub fn sign_challenge<B: AsRef<[u8]>>(signed: B) -> Self {
         Self::SignChallenge {
             signed: signed.as_ref().to_vec(),
-        }
-    }
-
-    pub fn error<S: ToString>(desc: S) -> Self {
-        Self::Error {
-            description: desc.to_string(),
         }
     }
 }
@@ -72,6 +63,8 @@ mod base_64 {
 
 pub(super) fn reply<B: AsRef<[u8]>>(msg: B, config: &Config) -> Result<Vec<u8>> {
     let msg: IncomingMessage = serde_json::from_slice(msg.as_ref())?;
+    log::debug!("Received message content: {:?}", msg);
+
     let reply = match msg {
         IncomingMessage::GetQuote { spid } => {
             let pod_enclave = PodEnclave::new(&config.enclave, &config.private_key)?;
@@ -88,5 +81,7 @@ pub(super) fn reply<B: AsRef<[u8]>>(msg: B, config: &Config) -> Result<Vec<u8>> 
             serialized
         }
     };
+
+    log::debug!("Reply content: {:?}", reply);
     Ok(reply)
 }

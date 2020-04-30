@@ -1,8 +1,8 @@
 # PoD Extension
 Cross browser PoD Extension for Firefox & Chromium
 
-#Installation
+# Installation
 Install web-ext package globally by `npm i -g web-ext`
 
-#Running
+# Running
 `web-ext run`

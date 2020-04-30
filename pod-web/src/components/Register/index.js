@@ -1,18 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 import { form, register } from "./register.module.css";
 import useEventListener from "../../hooks/useEventListener";
 import {HOST, REGISTER, REMOTE, ORIGIN} from "../../Constants";
 
-const getById = (id) => document.getElementById(id);
-
-const messageListener = (evt) => {
-	if (evt.origin !== ORIGIN || evt.data.host !== REMOTE)
-		return;
-	console.log(evt.data); // Answer here
-};
+const getById = id => document.getElementById(id);
 
 const Register = () => {
+	const [ quote, setQuote ] = useState(null);
 	useEffect(() => {
 		window.postMessage(
 			{ host: HOST, type: REGISTER },
@@ -20,13 +15,20 @@ const Register = () => {
 		);
 	}, []);
 
+	const messageListener = ({data, origin}) => {
+		if (origin !== ORIGIN || data.host !== REMOTE)
+			return;
+		console.log(data); // Answer here
+		setQuote(data.data)
+	};
+
 	useEventListener("message", messageListener);
 
 	const requestRegister = (event) => {
 		event.preventDefault();
-		const username = getById("usernameInput").value;
-		const password = getById("passwordInput").value;
-		mockRequest({ username, password })
+		const login = getById("usernameInput").value;
+		//const password = getById("passwordInput").value;
+		registerRequest({ login, quote })
 			.then((result) => {
 				console.log(result);
 			})
@@ -75,16 +77,14 @@ const Register = () => {
 
 export default Register;
 
-/*mock*/
-const users = ["mdt", "kubkon", "lukasz"];
-function mockRequest({ username, password }) {
-	return new Promise((resolve, reject) => {
-		setTimeout(() => {
-			if (users.includes(username)) {
-				reject({ status: 403, error: true, message: "User already exist" });
-			} else {
-				resolve({ status: 200, error: false, message: "Registered" });
-			}
-		}, 1000);
-	});
+function registerRequest({ login, quote }) {
+	console.log("request", login, quote);
+	return fetch('/register', {
+		method: 'post',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({
+			login,
+			quote,
+		})
+	}).then(response => response.json())
 }

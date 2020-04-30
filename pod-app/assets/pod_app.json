@@ -3,6 +3,5 @@
   "description": "Proof-of-device native client",
   "path": "NATIVE_APP_PATH",
   "type": "stdio",
-  "allowed_extensions": [ "pod_app@golem.network" ],
-  "allowed_origins": [ "pod_app@golem.network" ]
+  "allowed_extensions": [ "pod_app@golem.network" ]
 }

@@ -1,12 +1,12 @@
-#Pod-Browser
+# Pod-Web
 
 Test webapp to mimic any wep application with authentication
 
-#Installation
+# Installation
 
 - with yarn package manager (recomended), just type `yarn` and enter
 - with npm, `npm i`
 
-#Running
+# Running
 
 `npm run start` or `yarn start`

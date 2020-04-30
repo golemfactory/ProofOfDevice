@@ -1,38 +1,50 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import AuthContext from "../../context/auth";
 import useEventListener from "../../hooks/useEventListener";
 import { CHALLENGE, HOST, REMOTE, ORIGIN } from "../../Constants";
 
 import { form, login } from "./login.module.css";
 
-const getById = (id) => document.getElementById(id);
-
-const messageListener = (evt) => {
-	if (evt.origin !== ORIGIN || evt.data.host !== REMOTE) return;
-	console.log(evt.data); // Answer
-};
+const getById = id => document.getElementById(id);
 
 const Login = () => {
 	const auth = useContext(AuthContext);
+	const [ signed, setSigned ] = useState(null);
 	// const [loading, setLoading] = useState(false) for loading animation
-
 	useEffect(() => {
-		window.postMessage(
-			{ host: HOST, type: CHALLENGE, data: { value: 4 } },
-			ORIGIN
-		);
+		challengeRequest()
+			.then(({challenge}) => {
+				if(!challenge) throw new Error("Challenge cannot be empty.\nHint: Try removing cookies.");
+				window.postMessage(
+					{ host: HOST, type: CHALLENGE, data: challenge },
+					ORIGIN
+				);
+			})
+			.catch((error) => {
+				console.warn(error);
+			});
 	}, []);
+
+	const messageListener = ({data, origin}) => {
+		if (origin !== ORIGIN || data.host !== REMOTE) return;
+		console.log(data); // Answer
+		setSigned(data.data);
+	};
 
 	useEventListener("message", messageListener);
 
 	const requestLogin = (event) => {
 		event.preventDefault();
-		const username = getById("usernameInput").value;
-		const password = getById("passwordInput").value;
-		mockRequest({ username, password })
+		const login = getById("usernameInput").value;
+		//const password = getById("passwordInput").value;
+		authRequest({ login, signed_challenge: signed })
 			.then((result) => {
 				console.log(result);
-				auth.setLoggedIn(true);
+				if(result.status === "Ok") {
+					auth.setLoggedIn(true);
+				} else {
+					alert(result.error);
+				}
 			})
 			.catch((error) => {
 				console.warn(error);
@@ -71,16 +83,20 @@ const Login = () => {
 
 export default Login;
 
-/*mock*/
-const users = ["mdt", "kubkon", "lukasz"];
-function mockRequest({ username, password }) {
-	return new Promise((resolve, reject) => {
-		setTimeout(() => {
-			if (users.includes(username)) {
-				resolve({ status: 200, error: false, message: "Logged In" });
-			} else {
-				reject({ status: 403, error: true, message: "Wrong information" });
-			}
-		}, 1000);
-	});
+function challengeRequest() {
+	return fetch('/auth', {
+		method: 'get'
+	}).then(response => response.json())
+}
+
+function authRequest({ login, signed_challenge }) {
+	console.log('params', login, signed_challenge)
+	return fetch('/auth', {
+		method: 'post',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({
+			login,
+			response: signed_challenge,
+		})
+	}).then(response => response.json())
 }

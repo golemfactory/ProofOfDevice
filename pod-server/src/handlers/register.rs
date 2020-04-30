@@ -6,7 +6,7 @@ use diesel::prelude::*;
 
 use actix_web::error::BlockingError;
 use actix_web::{web, HttpResponse, Responder};
-use rust_sgx_util::{IasHandle, Nonce, Quote};
+use rust_sgx_util::{IasHandle, Quote};
 use serde::Deserialize;
 use std::env;
 use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
@@ -15,7 +15,6 @@ use tokio_diesel::{AsyncRunQueryDsl, OptionalExtension};
 pub struct RegisterInfo {
     login: String,
     quote: Quote,
-    nonce: Option<Nonce>,
 }
 
 pub async fn post(info: web::Json<RegisterInfo>, app_data: web::Data<AppData>) -> impl Responder {
@@ -41,12 +40,11 @@ pub async fn post(info: web::Json<RegisterInfo>, app_data: web::Data<AppData>) -
     }
 
     let quote = info.quote.clone();
-    let nonce = info.nonce.clone();
     if let Err(err) = web::block(move || {
         // Verify the provided data with IAS.
         let api_key = env::var("POD_SERVER_API_KEY")?;
         let handle = IasHandle::new(&api_key, None, None)?;
-        handle.verify_quote(&quote, nonce.as_ref(), None, None, None, None)?;
+        handle.verify_quote(&quote, None, None, None, None, None)?;
         Ok(())
     })
     .await

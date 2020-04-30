@@ -84,6 +84,7 @@ async fn main() -> anyhow::Result<()> {
             .wrap(
                 CookieSession::signed(cookie_key.as_bytes())
                     .name("session")
+                    .http_only(false)
                     .secure(false),
             )
             .wrap(IdentityService::new(

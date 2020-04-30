@@ -1,12 +1,17 @@
 import React, { Component } from "react";
 import AuthContext from "../context/auth";
+import Cookies from 'js-cookie';
 
 class AuthProvider extends Component {
 	state = {
-		isLoggedIn: false,
+		isLoggedIn: checkCookie(),
 	};
 
-	setLoggedIn = (isLoggedIn) => this.setState({isLoggedIn});
+	// make get request to `/` here if login is successful or not
+	setLoggedIn = (isLoggedIn) => {
+		if(!isLoggedIn) removeCookies();
+		this.setState({isLoggedIn});
+	}
 
 	render() {
 		return (
@@ -20,3 +25,13 @@ class AuthProvider extends Component {
 }
 
 export default AuthProvider;
+
+function checkCookie() { // mock
+	const value = Cookies.get('auth');
+	console.log(value);
+	return !!value;
+}
+
+function removeCookies() {
+	Cookies.remove('session');
+}

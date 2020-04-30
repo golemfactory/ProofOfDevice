@@ -103,7 +103,7 @@ fn run(config: Config) -> Result<()> {
         match stdio_with_interrupt(Stdio::Stdin, &mut msg_len) {
             Err(err) => return Err(err),
             Ok(Interrupt::Break) => break,
-            Ok(Interrupt::Continue) => {},
+            Ok(Interrupt::Continue) => {}
         };
         let msg_len = u32::from_ne_bytes(msg_len);
         let msg_len = usize::try_from(msg_len).expect("u32 should fit into usize");
@@ -125,7 +125,7 @@ fn run(config: Config) -> Result<()> {
         match stdio_with_interrupt(Stdio::Stdin, &mut msg) {
             Err(err) => return Err(err),
             Ok(Interrupt::Break) => break,
-            Ok(Interrupt::Continue) => {},
+            Ok(Interrupt::Continue) => {}
         };
 
         log::debug!("Message received");
@@ -138,7 +138,7 @@ fn run(config: Config) -> Result<()> {
         match stdio_with_interrupt(Stdio::Stdout, &mut reply_len.to_ne_bytes()) {
             Err(err) => return Err(err),
             Ok(Interrupt::Break) => break,
-            Ok(Interrupt::Continue) => {},
+            Ok(Interrupt::Continue) => {}
         };
 
         log::debug!("Sent reply len: {}", reply_len);
@@ -146,7 +146,7 @@ fn run(config: Config) -> Result<()> {
         match stdio_with_interrupt(Stdio::Stdout, &mut reply) {
             Err(err) => return Err(err),
             Ok(Interrupt::Break) => break,
-            Ok(Interrupt::Continue) => {},
+            Ok(Interrupt::Continue) => {}
         };
         io::stdout().flush()?;
 

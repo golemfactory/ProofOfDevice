@@ -2,7 +2,7 @@ use actix_web::client::Client;
 use actix_web::HttpMessage;
 use anyhow::anyhow;
 use pod_api::{PodEnclave, QuoteType};
-use rust_sgx_util::{Nonce, Quote};
+use rust_sgx_util::Quote;
 use serde::Serialize;
 use structopt::StructOpt;
 
@@ -41,7 +41,6 @@ enum Command {
 struct RegisterInfo {
     login: String,
     quote: Quote,
-    nonce: Option<Nonce>,
 }
 
 #[derive(Serialize)]
@@ -74,7 +73,6 @@ async fn main() -> anyhow::Result<()> {
                 .send_json(&RegisterInfo {
                     login: login.clone(),
                     quote,
-                    nonce: None,
                 })
                 .await
                 .map_err(|err| anyhow!("{:?}", err))?;

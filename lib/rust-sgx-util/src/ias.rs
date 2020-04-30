@@ -182,7 +182,7 @@ impl IasHandle {
                 match &advisory_path {
                     Some(path) => path.as_ptr(),
                     None => ptr::null(),
-                }
+                },
             )
         };
         if ret == 0 {

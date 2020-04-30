@@ -14,6 +14,7 @@ use diesel::SqliteConnection;
 use dotenv::dotenv;
 use serde::Deserialize;
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs};
 use structopt::StructOpt;
 
@@ -51,12 +52,15 @@ async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
     dotenv()?;
     // Enable info logging by default.
-    env::set_var("RUST_LOG", "info");
-    if opt.verbose {
-        env::set_var("RUST_LOG", "info,rust_sgx_util=debug,pod_server=debug");
+    let level = if opt.verbose {
         rust_sgx_util::set_verbose(true);
-    }
-    pretty_env_logger::init();
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Info
+    };
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
+    let log_output = fs::File::create(format!("pod-server_{}.log", now.as_secs_f64()))?;
+    simplelog::WriteLogger::init(level, simplelog::Config::default(), log_output)?;
     // Read config file
     let config_file = fs::read(&opt.config_path)?;
     let config: ServerConfig = toml::from_slice(&config_file)?;

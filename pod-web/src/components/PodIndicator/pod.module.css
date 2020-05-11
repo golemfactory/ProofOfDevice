@@ -1,0 +1,32 @@
+.podIndicator {
+	display: flex;
+	width: auto;
+	align-items: flex-start;
+
+	position: absolute;
+	top: -5px;
+	right: 10px;
+
+}
+
+.podInfo {
+	margin-right: 10px;
+	opacity: 0;
+	transition: opacity .5s;
+
+	font-size: 10pt;
+
+	color: var(--color5);
+	order: 1;
+}
+
+.podImg {
+	width: 42px;
+	cursor: pointer;
+
+	order: 2;
+}
+
+.podImg:hover + .podInfo {
+	opacity: 1;
+}

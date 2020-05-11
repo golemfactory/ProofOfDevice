@@ -1,9 +1,32 @@
 .login {
 	width: 100%;
-	height: calc(100vh - 65px);
+	height: calc(100vh - 63px);
 	display: flex;
-	justify-content: center;
+	justify-content: space-around;
 	align-items: center;
+  background-image: url('../../assets/login-bg.jpg');
+  background-size: cover;
+  animation: var(--anim) .5s;
+  animation-fill-mode: forwards;
+}
+
+.motto {
+	font-size: 4vw;
+	font-weight: 700;
+	color: var(--color2);
+	text-shadow: 2px 2px #fff;
+	text-align: left;
+  animation: var(--anim) .5s;
+  animation-fill-mode: both;
+  animation-delay: 300ms;
+}
+
+.motto .click {
+	position: relative;
+	width: 60px;
+	filter: brightness(0) invert(1);
+	top: 5px;
+	left: 10px;
 }
 
 .form {
@@ -11,34 +34,8 @@
 	width: 30%;
 }
 
-.form input{
-	margin-top: 7px;
-	margin-bottom: 7px;
-	font-size: 14pt;
-	padding: 0 7px;
-}
-
-.form button {
-	width: 140px;
-	height: 35px;
-	background: var(--color4);
-	color: var(--color3);
-	border: none;
-	font-size: 14pt;
-	margin-top: 7px;
-	border-radius: 7px;
-	cursor: pointer;
-}
-
-.form button:hover {
-	background: var(--color5);
-}
-
-fieldset {
-	padding: 42px 0;
-}
-
-fieldset legend {
-	font-size: 14pt;
-	margin: 0 14pt;
+@media only screen and (max-width: 900px) {
+  .motto {
+    display: none;
+  }
 }

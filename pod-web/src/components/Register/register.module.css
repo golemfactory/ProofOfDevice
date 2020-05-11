@@ -4,32 +4,12 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
+  background-image: url('../../assets/register-bg.jpg');
+  background-size: cover;
+  animation: var(--anim) .5s;
 }
 
 .form {
 	min-width: 300px;
 	width: 30%;
-}
-
-.form input{
-	margin-top: 7px;
-	margin-bottom: 7px;
-	font-size: 14pt;
-	padding: 0 7px;
-}
-
-.form button {
-	width: 140px;
-	height: 35px;
-	background: var(--color4);
-	color: var(--color3);
-	border: none;
-	font-size: 14pt;
-	margin-top: 7px;
-	border-radius: 7px;
-	cursor: pointer;
-}
-
-.form button:hover {
-	background: var(--color5);
 }

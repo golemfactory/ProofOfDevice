@@ -4,4 +4,19 @@
 --color3: #f6f4f3ff;
 --color4: #276fbfff;
 --color5: #183059ff;
+
+--anim: bringPage;
+}
+
+
+@keyframes bringPage {
+  0% {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,17 +1,103 @@
 .home {
 	width: 100%;
+	min-width: 500px;
 	height: calc(100vh - 63px);
 	display: flex;
-	justify-content: center;
-	align-items: center;
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: flex-start;
 	font-size: 21pt;
+	padding: 0 25vh;
+	box-sizing: border-box;
+	transition: padding .5s;
+	color: var(--color3);
 }
 
-/*.home span {
-	background: white;
-	padding: 7px;
-	border-radius: 7px;
-	-webkit-box-shadow: 7px 7px 5px 0px rgba(50, 50, 50, 0.75);
-	-moz-box-shadow: 7px 7px 5px 0px rgba(50, 50, 50, 0.75);
-	box-shadow: 7px 7px 5px 0px rgba(50, 50, 50, 0.75);
-}*/
+.spentChart {
+	width: 100%;
+	height: 450px;
+}
+
+.actionPanel {
+	position: relative;
+	bottom: 0;
+}
+
+.displayAmount {
+	margin-left: 10px;
+	font-family: monospace;
+	word-spacing: -10px;
+}
+
+.summary {
+	width: 100%;
+	display: flex;
+	justify-content: space-between;
+	padding: 0 15px;
+	box-sizing: border-box;
+	margin-top: 20px;
+}
+
+.historyScreen,
+.withdrawScreen {
+	width: 30vw;
+	height: 20vh;
+	padding: 15px 30px;
+	border: 1px solid grey;
+	border-radius: 5px;
+	text-align: left;
+}
+
+.withdrawScreen {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	position: relative;
+}
+.historyScreen {
+	overflow-y: scroll;
+}
+
+.historyScreen ul {
+	padding: 0;
+}
+
+.historyScreen li {
+	align-items: center;
+	border: 1px dashed #999;
+	height: 60px;
+}
+
+.historyScreen li span:first-child {
+	text-align: left;
+	width: 150px;
+}
+
+.historyScreen li span:last-child {
+	text-align: right;
+	width: 150px;
+}
+
+@media only screen and (max-width: 1270px) {
+  .home {
+    display: block;
+    padding: 0 15px;
+  }
+}
+
+@media only screen and (max-width: 900px) {
+	.spentChart {
+		height: 280px;
+	}
+  .summary {
+  	display: block;
+  }
+
+  .historyScreen,
+	.withdrawScreen {
+		width: 100%;
+		height: 25vh;
+		box-sizing: border-box;
+		margin-top: 10px;
+	}
+}

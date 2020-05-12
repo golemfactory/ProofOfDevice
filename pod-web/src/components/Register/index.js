@@ -2,11 +2,14 @@ import React, { useEffect, useState } from "react";
 
 import { form, register } from "./register.module.css";
 import useEventListener from "../../hooks/useEventListener";
+import request from "../../utils/request";
 import {HOST, REGISTER, REMOTE, ORIGIN} from "../../Constants";
+import PodIndicator from "../PodIndicator";
 
 const getById = id => document.getElementById(id);
 
 const Register = () => {
+	const [ errorStatus, setError ] = useState(false);
 	const [ quote, setQuote ] = useState(null);
 	useEffect(() => {
 		window.postMessage(
@@ -33,21 +36,24 @@ const Register = () => {
 				console.log(result);
 			})
 			.catch((error) => {
-				console.warn(error);
+				setError(true)
 			});
 	};
 
 	return (
 		<div className={register}>
-			<form className={form} onSubmit={requestRegister}>
+			<form className={form} onSubmit={requestRegister} autoComplete="off">
 				<fieldset>
 					<legend>Registration</legend>
+					{errorStatus ? <div>User already exist!</div> : null}
 					<div>
 						<input
 							id="usernameInput"
 							type="text"
 							name="text"
 							placeholder="Username"
+							autoComplete="off"
+							autoFocus
 						/>
 					</div>
 					<div>
@@ -56,6 +62,7 @@ const Register = () => {
 							type="password"
 							name="password"
 							placeholder="Pasword"
+							autoComplete="new-password"
 						/>
 					</div>
 					<div>
@@ -64,11 +71,13 @@ const Register = () => {
 							type="password"
 							name="confirmation"
 							placeholder="Confirmation"
+							autoComplete="new-password"
 						/>
 					</div>
 					<div>
 						<button type="submit">Register</button>
 					</div>
+					<PodIndicator isReady={!!quote} />
 				</fieldset>
 			</form>
 		</div>
@@ -78,13 +87,12 @@ const Register = () => {
 export default Register;
 
 function registerRequest({ login, quote }) {
-	console.log("request", login, quote);
-	return fetch('/register', {
+	return request('/register', {
 		method: 'post',
 		headers: {'Content-Type': 'application/json'},
 		body: JSON.stringify({
 			login,
 			quote,
 		})
-	}).then(response => response.json())
+	})
 }

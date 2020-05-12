@@ -24,22 +24,19 @@
     ]
   },
 
-  "permissions": [
-    "activeTab",
-    "storage",
-    "nativeMessaging"
-  ],
+  "permissions": ["activeTab", "storage", "nativeMessaging"],
 
   "content_scripts": [
     {
-      "matches": ["http://*/*"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": [
         "js/check-browser.js",
         "js/promisify.js",
         "js/constants.js",
         "frontend.js"
       ],
-      "css": ["style/main.css"]
+      "css": ["style/main.css"],
+      "run_at": "document_start"
     }
   ],
 

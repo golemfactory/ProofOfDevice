@@ -20,7 +20,7 @@ Requirements
 - SGX SSL library version 2.5 with OpenSSL v1.1.1d:
   `<https://github.com/intel/intel-sgx-ssl/tree/lin_2.5_1.1.1d>`_
   `<https://www.openssl.org/source/old/1.1.1/openssl-1.1.1d.tar.gz>`_
-- (Never versions of SGX PSW/SDK/SSL should work, 2.5 was chosen for Ubuntu 16.04 compatibility)
+- (Newer versions of SGX PSW/SDK/SSL should work, 2.5 was chosen for Ubuntu 16.04 compatibility)
 
 Building
 ========
